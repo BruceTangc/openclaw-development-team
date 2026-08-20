@@ -1,0 +1,25 @@
+# templates/development-task.yaml — Development Task Contract
+task_id: DT-YYYYMMDD-001          # 全局唯一 id
+project: example-project          # 所属项目/仓库
+goal: 在临时测试项目中添加一个 hello 函数   # 一句话目标
+objective: 实现 hello() 并附带可运行的自测    # 可验证达成目标
+scope:
+  in:
+    - 新增 hello 函数实现
+    - 新增自测
+  out:
+    - 不修改无关文件
+    - 不 push
+constraints:
+  - 不 push / 不建 PR / 不 release
+  - 不改安全/权限/Runtime 配置
+  - 产出脱敏（无 key/token/邮箱/hash）
+acceptance_criteria:
+  - hello 函数存在并可调用
+  - 自测通过
+  - 有文件变更清单 + evidence
+requester_session: agent:main:telegram:direct:721003068   # 请求发起 session
+result_owner: agent:main:telegram:direct:721003068        # 归属 Lead / requester，非最终用户
+status: NEW                     # NEW → DELEGATED → ...
+attempt: 1
+created_at: 2026-08-20T18:55:00+08:00

@@ -1,0 +1,28 @@
+# templates/delegation-contract.yaml — Delegation Contract
+task_id: DT-YYYYMMDD-001
+role: developer
+objective: 实现 hello() 并附带可运行的自测
+context: >
+  临时测试项目，isolation 模式，需自足说明。
+  目标目录为 <TARGET_DIR>，在其中新增实现与自测。
+scope:
+  in:
+    - <TARGET_DIR> 内新增实现文件
+    - 新增自测并运行
+  out:
+    - 不修改 <TARGET_DIR> 外文件
+    - 不 push
+constraints:
+  - 不 push / 不建 PR / 不 release
+  - 不改安全/权限/Runtime 配置
+  - 产出脱敏（无 key/token/邮箱/hash）
+acceptance_criteria:
+  - hello 函数存在并可调用
+  - 自测通过
+  - 有文件变更清单 + evidence
+expected_output: templates/implementation-result.yaml
+result_owner: agent:main:telegram:direct:721003068   # 必须 = Lead / requester session
+timeout:
+  source: agents.defaults.subagents.runTimeoutSeconds
+  on_timeout: SUBAGENT_TIMEOUT
+attempt: 1
