@@ -21,7 +21,7 @@ acceptance_criteria:
   - 自测通过
   - 有文件变更清单 + evidence
 expected_output: templates/implementation-result.yaml
-result_owner: agent:main:telegram:direct:721003068   # 必须 = Lead / requester session
+result_owner: <LEAD_SESSION>   # 必须 = Lead / requester session
 timeout:
   source: agents.defaults.subagents.runTimeoutSeconds
   on_timeout: SUBAGENT_TIMEOUT
