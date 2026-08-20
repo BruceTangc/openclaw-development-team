@@ -1,39 +1,75 @@
-# protocols/main-agent-integration.md — Phase 4: Production Integration
+# protocols/main-agent-integration.md — Phase 4.1: Production Integration
 
-> 让 OpenClaw Main Agent 真正把 Development Team 当成自己的"软件开发部门"使用。
+> Main Agent 和 Development Lead 是两个不同角色。Main Agent 是用户接口 + 任务委派者，Development Lead 是开发项目经理。
 
-## 定位
+## 角色分离
 
-Phase 4 不增加新角色。只做 Main Agent → Development Team → Main Agent 的生产链路。
+### Main Agent（你 = OpenClaw 主会话）
 
-## Task Router（Main Agent 决策树）
+**职责**：
+1. 接收用户消息
+2. **Development Task Classification**（判断是否为开发任务）
+3. 如果是 DEVELOPMENT_TASK → 创建 Task Contract → 委派 Development Lead
+4. 等待 development_result
+5. 向用户汇报
 
-Main Agent 收到用户消息后，按以下优先级路由：
+**你不关心** Development Team 内部发生了什么。你只关心 development_result。
 
-| 类型 | 特征 | 路由 |
-|:--|:--|:--|
-| **开发任务** | 涉及代码修改/新功能/bug修复/Skill开发/新Agent | → Development Team |
-| **研究任务** | 需要搜索/调研/对比/分析 | → Research（web_search / Solution Researcher） |
-| **管理任务** | 日历/邮件/提醒/配置 | → 对应 Skill |
-| **闲聊** | 不需要工具 | → 直接回复 |
-| **其他** | 不确定 | → ASK |
+### Development Lead（被委派的子代理）
 
-## 判定条件（是否调用 Development Team）
+**职责**：
+1. 接收 Task Contract
+2. 判断复杂度 → 动态委派 Role
+3. 校验每一步 Result
+4. 处理失败 / rework / architecture revision
+5. 最终返回 development_result
 
-满足以下**任一**条件 → 调用 Development Team：
+**你不直接面对用户。** 你的 result_owner = Main Agent。
 
-1. 用户明确说"开发"/"实现"/"写代码"/"修改"/"添加功能"
-2. 需要修改现有代码仓库
-3. 需要创建新文件/模块/Skill
-4. 需要修复 bug
-5. 需要重构
-6. 涉及 git 操作（commit/push/PR）
+## Development Task Classification Gate
 
-不满足 → Main Agent 自己处理。
+Main Agent 收到用户消息后，**自己执行**这个判断：
+
+### DEVELOPMENT_TASK（进入 Development Team）
+
+满足**任一**条件：
+
+1. 需要修改现有代码仓库（git 操作）
+2. 需要新增/删除代码文件
+3. 需要新增 Skill / Agent / Feature
+4. 需要多步骤工程实施（架构 + 编码 + 测试 + Review）
+5. 需要修复 bug（涉及代码修改）
+6. 需要重构
+7. 用户明确要求"开发"/"实现"/"写代码"/"修改"/"添加功能"/"修复"/"重构"
+
+**示例**：
+- ✅ "给 dlt-simulator 增加一个号码过滤策略" → DEVELOPMENT_TASK
+- ✅ "修复这个 Skill 的 bug" → DEVELOPMENT_TASK
+- ✅ "给 Agent OS 增加一个 Skill" → DEVELOPMENT_TASK
+- ✅ "重构这个模块" → DEVELOPMENT_TASK
+- ✅ "把这个功能接入 OpenClaw" → DEVELOPMENT_TASK
+
+### NORMAL_TASK（Main Agent 自己处理）
+
+满足**任一**条件：
+
+1. 只需要读取/解释/分析（不需要修改）
+2. 只需要搜索/调研
+3. 只需要简单脚本（一次性，不涉及仓库）
+4. 只需要回答问题
+5. 只需要配置/管理
+6. 闲聊
+
+**示例**：
+- ❌ "帮我看看这个代码是什么意思" → NORMAL_TASK
+- ❌ "看看这个 GitHub 项目" → NORMAL_TASK
+- ❌ "帮我写一个简单脚本" → NORMAL_TASK
+- ❌ "这个报错是什么意思" → NORMAL_TASK
+- ❌ "今天天气怎么样" → NORMAL_TASK
+
+**NORMAL_TASK 不得启动 Development Team。** 否则过度工程化。
 
 ## Task Contract（Main Agent → Development Lead）
-
-Main Agent 交给 Development Team 的标准格式：
 
 ```yaml
 type: development_task
@@ -41,16 +77,13 @@ task_id: DT-<YYYYMMDD>-<NNN>
 user_request: "<用户原始需求>"
 repository: "<仓库路径或 GitHub URL>"
 working_directory: "<工作目录>"
-constraints:
-  - "<限制条件>"
-priority: <low|normal|high>
-acceptance_criteria:
-  - "<可验证的成功条件>"
+constraints: []
+priority: normal
+acceptance_criteria: []
+requester_session: "<Main Agent session>"
 ```
 
 ## Development Result（Development Lead → Main Agent）
-
-Development Team 最终只返回一个标准结果：
 
 ```yaml
 type: development_result
@@ -74,71 +107,72 @@ known_issues: []
 next_action: ""
 ```
 
-## Human Decision（只在必要时打扰用户）
-
-以下情况 → HUMAN_DECISION_REQUIRED：
-
-1. 两种架构都合理但成本/风险明显不同
-2. 需要扩大 Scope（超出原始需求）
-3. 需要破坏兼容性
-4. 需要危险操作（删除生产数据、修改权限等）
-5. 连续修复失败（≥3 次）
-6. 需要用户提供无法推断的信息
-
-**其他所有情况不打扰用户。** Lead 自主处理 Developer FAIL / Validator FAIL / Reviewer FAIL。
-
-## Failure Recovery（Lead 自主处理）
-
-| 失败类型 | Lead 的处理 |
-|:--|:--|
-| TIMEOUT | 检查 subagent status → 必要时 sessions_history 诊断 → retry / takeover |
-| SUBAGENT_FAILURE | 检查错误原因 → retry（≤3）→ 失败则 ESCALATE |
-| VALIDATION_FAILURE | 读 findings → 判断根因 → Developer 修复或 RETURN_TO_ARCHITECT |
-| REVIEW_FAILURE | 读 critical_findings → 生成 rework_instruction → Developer |
-| REWORK_LIMIT | 达到 MAX_REWORK_ATTEMPTS → HUMAN_DECISION_REQUIRED |
-| ARCHITECTURE_REVISION | Validator/Reviewer 发现架构问题 → RETURN_TO_ARCHITECT |
-
-## Main Agent 集成方式
-
-### 方式 1：通过 sessions_spawn 委派（推荐）
+## 架构图
 
 ```
-Main Agent
-  → sessions_spawn(task="<Development Task>", model="xiaomi/mimo-v2.5")
-  → Development Lead（子代理）自主执行全流程
-  → completion 回到 Main Agent
-  → Main Agent 消费 development_result
-  → 回复用户
+USER
+  │
+  ▼
+┌─────────────────────────┐
+│      Main Agent         │
+│      (OpenClaw)         │
+│                         │
+│  1. 接收用户消息         │
+│  2. Task Classification │  ← DEVELOPMENT_TASK or NORMAL_TASK?
+│  3. 创建 Task Contract  │
+│  4. 委派 Development Lead│
+│  5. 等待 development_result│
+│  6. 向用户汇报           │
+└──────────┬──────────────┘
+           │
+     ┌─────┴─────┐
+     ▼           ▼
+NORMAL_TASK   DEVELOPMENT_TASK
+     │           │
+     ▼           ▼
+Main Agent    ┌─────────────────────────┐
+自行处理       │   Development Lead      │
+               │   (内部 Orchestrator)   │
+               └──────────┬──────────────┘
+                          │
+        ┌─────────────────┼─────────────────┐
+        ▼                 ▼                 ▼
+   Requirement        Research          Repository
+    Analyst           Researcher         Analyst
+        │                 │                 │
+        └─────────────────┼─────────────────┘
+                          ▼
+                       Architect
+                          │
+                          ▼
+                       Developer
+                          │
+                          ▼
+                       Validator
+                          │
+                          ▼
+                  Repository Reviewer
+                          │
+                 ┌────────┴────────┐
+                 ▼                 ▼
+              APPROVED           FAIL
+                 │                 │
+                 ▼                 ▼
+         development_result    Rework → Developer
+                 │
+                 ▼
+            Main Agent
+                 │
+                 ▼
+               USER
 ```
 
-### 方式 2：Main Agent 直接扮演 Development Lead
-
-如果 sessions_spawn 不可用或任务简单，Main Agent 可以直接扮演 Lead：
-1. 自己执行 Requirement → Solution Research → Repository Analyst → Architect
-2. sessions_spawn Developer
-3. 等 completion
-4. sessions_spawn Validator
-5. sessions_send 调用 Reviewer
-6. 返回 development_result
-
-### 方式 3：fire-and-forget（后台任务）
-
-对于非紧急开发任务：
-```
-Main Agent
-  → sessions_spawn(task="...", mode="run")
-  → 不等待 completion
-  → 任务完成后通过 announce 推送结果给用户
-```
-
-## 用户可见消息策略
+## User Message Strategy
 
 | 阶段 | 用户看到什么 |
 |:--|:--|
 | 收到开发需求 | "收到，开始开发 [任务简述]..." |
-| 开发中（可选） | "正在 [阶段]..."（仅用户主动询问时） |
-| 需要决策 | 问题 + 方案 + 推荐 + 风险 + 准确决策点 |
-| 开发完成 | development_result 摘要（changed_files/tests/review/commit） |
-| 开发失败 | 失败原因 + 已尝试的修复 + 建议的下一步 |
-
-**不打扰用户**：内部阶段结果（Requirement/Architecture/Implementation）不需要主动推送。
+| 开发中 | 不主动推送（仅用户询问时） |
+| 需要决策 | 问题 + 方案 + 推荐 + 风险 |
+| 开发完成 | development_result 摘要 |
+| 开发失败 | 失败原因 + 建议 |
