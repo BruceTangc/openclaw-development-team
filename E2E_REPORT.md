@@ -1,169 +1,166 @@
-# E2E_REPORT.md — Phase 1 施工报告
+# E2E_REPORT.md — Phase 2 施工报告
 
 施工时间：2026-08-20
-施工者：OpenClaw Development Team Phase 1 子代理（depth 1 subagent）
-OpenClaw：2026.7.1-2 (0790d9f)
+施工者：OpenClaw Development Team Phase 2 子代理（depth 1 subagent）
+OpenClaw：2026.7.1-2
+基线：Phase 1（commit e98aee2）
 
 ---
 
-## 1. 实际架构与文件清单
+## 0. 一句话结论
 
-```
-dev-team-phase1/
-├── README.md                     # 项目说明 + 范围 + 状态机 + 安全红线
-├── AGENTS.md                     # Development Lead 角色（= Main Agent）
-├── PROTOCOL.md                   # Phase 1 协议：Result Closure P0 + 状态机 + Timeout/Retry
-├── IMPLEMENTATION_SPEC.md        # 实现规范 + E2E 验收清单 + OpenClaw API 使用方式
-├── .gitignore                    # 忽略 __pycache__ / 临时产物
-├── agents/developer/AGENTS.md    # Developer 角色（原生 sub-agent）
-├── protocols/
-│   ├── task.md                   # Development Task Contract
-│   ├── delegation.md             # Delegation Contract（result_owner = Lead）
-│   ├── result-closure.md         # Result Closure（P0）
-│   └── verification.md           # Minimal Validator Stub
-├── templates/
-│   ├── development-task.yaml     # Task 模板
-│   ├── delegation-contract.yaml  # Delegation 模板
-│   ├── implementation-result.yaml # Implementation Result 模板
-│   └── verification-result.yaml  # Verification Result 模板
-└── scripts/
-    ├── e2e_runner.py             # E2E 本地准备 + 本地 Validator 演练
-    ├── e2e_target.py             # 极小目标：hello() 函数 + 内置自测
-    └── verifier.py               # Minimal Validator Stub（5 项校验）
-```
-
-### 各文件作用
-
-| 文件 | 作用 |
-|:--|:--|
-| README.md | 入口，说明 Phase 1 只做 8 项、状态机、安全红线 |
-| AGENTS.md | Development Lead 角色：委派与结果消费中枢，result_owner 铁律 |
-| PROTOCOL.md | 权威协议：Result Closure P0（announce 链 + sessions_yield + 禁止轮询）+ 状态机 + Timeout/Retry |
-| IMPLEMENTATION_SPEC.md | 契约字段、Minimal Validator 校验项、E2E 验收清单、OpenClaw API 用法 |
-| agents/developer/AGENTS.md | Developer 角色：落地 + 自测 + 回传结构化 Implementation Result，不 push |
-| protocols/*.md | 分协议：Task / Delegation / Result Closure / Verification |
-| templates/*.yaml | 四个契约/产物的 YAML 模板（Task/Delegation/Result/Verification） |
-| scripts/e2e_runner.py | 准备隔离目标目录 + 生成 Task/Delegation YAML + 演练本地 Validator |
-| scripts/e2e_target.py | hello(name) + 内置 _self_test()，无需 pytest 即可自测 |
-| scripts/verifier.py | Minimal Validator：changed_files/tests执行/tests通过/acceptance/diff，输出 verification_result |
+在 Phase 1（Result Closure）基础上，新增 4 个角色 + 4 个 schema + Implementation Plan schema + Lead 动态路由 + Artifact 持久化 + 复用决策机制，并用一个**真实任务**（给 dlt-simulator 增加统计分析策略）跑通
+Requirement → Solution Researcher（真实 GitHub 搜索）→ Repository Analyst → Architect → Implementation Plan 的完整 Artifact 流转，所有 schema 被真实填充，5 个 E2E 场景 + 8 项 Artifact 校验全部 PASS。
 
 ---
 
-## 2. OpenClaw API 使用方式（施工依据，来自官方文档）
+## 1. 新增文件清单
 
-| 能力 | 工具 | 关键点 |
+```
+agents/requirement-analyst/AGENTS.md      # 需求分析师角色
+agents/solution-researcher/AGENTS.md      # 方案研究员角色（搜索优先级 + GitHub 分析 + reuse_level）
+agents/repository-analyst/AGENTS.md      # 仓库分析师角色（只读）
+agents/architect/AGENTS.md                # 架构师角色（七问 + Architecture Result + Implementation Plan）
+protocols/role-handoff.md                 # 结构化 Artifact 交接协议
+protocols/artifact-persistence.md         # Artifact 持久化协议
+protocols/routing.md                      # Lead 动态路由（决策树 + 复杂度）
+protocols/reuse-decision.md               # 复用决策机制
+templates/requirement-result.yaml         # 需求规格模板
+templates/solution-discovery-result.yaml  # 方案发现模板
+templates/repository-understanding.yaml   # 仓库理解模板
+templates/architecture-result.yaml        # 架构结果模板
+templates/implementation-plan.yaml        # 实施方案模板
+scripts/e2e_phase2.py                     # Artifact 链 + 路由逻辑 E2E（8 项校验）
+scripts/e2e_scenarios.py                  # 5 个 E2E 场景
+.tasks/README.md                          # 持久化目录说明
+.tasks/DT-20260820-002/*.yaml             # 真实验收任务 7 个 Artifact（含 handoff-log）
+```
+
+## 2. 修改文件清单
+
+```
+AGENTS.md                  # Development Lead：从"委派+消费"升级为"唯一 Orchestrator + 动态路由 + 六项校验"
+README.md                  # Phase 2 完整范围 + Artifact 流转 + 路由 + 验收
+PROTOCOL.md                # 新增 §6-10（角色/Handoff/Persistence/Routing/Reuse）
+IMPLEMENTATION_SPEC.md     # 新增 §8-13（4 角色/4 schema/路由/持久化/复用/5 场景）
+agents/developer/AGENTS.md # 补充 Developer 接收 architecture_result/implementation_plan 说明
+```
+
+---
+
+## 3. Role definitions（4 个新角色）
+
+| 角色 | 核心定位 | 铁律 |
 |:--|:--|:--|
-| 委派 | `sessions_spawn` | 非阻塞，返回 `{status:"accepted", runId, childSessionKey}`；参数 task/taskName/label/cwd/model/context |
-| 等待 | `sessions_yield` | 结束当前 turn，等 completion 事件作为下一条模型消息 |
-| 回传 | completion/announce | push 式，含 Status(completed/failed/timeout/unknown) + 子代理 assistant 文本 + stats line |
-| 诊断(异常) | `subagents` / `sessions_history` | 仅超时/失败回落，非正常等待 |
-| 追加(可选) | `sessions_send` | fire-and-forget，非回传机制 |
+| Requirement Analyst | 自然语言→结构化需求 | 不扩大需求 / 不把猜测当事实 / 小问题自行假设 / 重大未知才 HUMAN_DECISION_REQUIRED / 尽量少提问 |
+| Solution Researcher | 先查现成再造轮子 | 严格搜索优先级 / GitHub 候选必分析 / 找不到 Must NO_SUITABLE_EXISTING_SOLUTION / 禁止虚构 |
+| Repository Analyst | 只读理解现状 | 默认只读 / 禁止 write production+commit+push+改配置 / 不删重复实现只记录 / 证据优先 |
+| Architect | 三输入→架构+方案 | 必答七问 / 冲突→RETURN_TO_ARCHITECT / 只设计不实现 / 复用优先 |
 
 ---
 
-## 3. Result Closure 实现
+## 4. Lead routing logic（动态决策）
 
-- **首选路径**：`Lead → sessions_spawn → Developer 执行 → completion/announce（幂等 key）→ requester → sessions_yield → Lead 消费 → Validator PASS`。
-- **等待原语**：`sessions_yield`，禁止 sleep/sessions_history/sessions_list/subagents list 轮询。
-- **结果语义**：Result = 子代理最新 assistant 文本；Status 由 runtime 派生；禁止只返回"完成了"。
-- **回传机制**：announce 链（原生 sub-agent 无 message/sessions_send）。
-- 落地文件：`protocols/result-closure.md`、`PROTOCOL.md §1`。
+- **复杂度路由**：简单(typo/单文件/文档/配置/bug)→Developer；中等(多文件/新 Skill/新功能/API/数据处理)→Repo Analyst→Architect→Developer；复杂(新 Agent/Team/架构/Agent OS/Runtime/DB/多系统/安全/大 refactor)→Solution Researcher→Repo Analyst→Architect→Developer。
+- **六项校验**：task_id / status / required fields / acceptance_criteria / evidence / blocking issue。
+- **分支语义**：RETRY_ROLE / RETURN_TO_ARCHITECT / HUMAN_DECISION_REQUIRED / REUSE_EXISTING_CAPABILITY / NEXT_STAGE。
+- **复杂度是建议**，最终 Lead 判断。
 
----
-
-## 4. Timeout / Recovery 实现
-
-- timeout 来源 `agents.defaults.subagents.runTimeoutSeconds`（spawn 不接受 per-call timeout）。
-- 超时 → `SUBAGENT_TIMEOUT` → Lead 用 subagents/sessions_history 诊断（recovery，非正常等待）。
-- Retry ≤3 次，每次记录 attempt/failure_reason/previous_result/new_strategy。
-- 连续失败 ≥3 → ESCALATE。
-- 落地文件：`AGENTS.md`、`PROTOCOL.md §3`、`protocols/result-closure.md §5`。
+落地：`AGENTS.md` + `protocols/routing.md`。
 
 ---
 
-## 5. E2E 测试结果（真实，非 mock）
+## 5. 4 个 schema + Implementation Plan schema
 
-### 5.1 已在本次施工中真实跑通的部分（本地可验证链路）
+（字段详见 `IMPLEMENTATION_SPEC.md §9`，此处列概览）
 
-**目标实现（hello 函数）**：`scripts/e2e_target.py` 内置自测真实执行通过：
+| Schema | 关键字段 |
+|:--|:--|
+| requirement_result | user_request/goal/problem/expected_outcome/functional+non_functional/constraints/scope/assumptions/unknowns/acceptance_criteria/risk_level/recommended_path（FAST/STANDARD/FULL） |
+| solution_discovery_result | search_scope/candidates[]（name/repo/purpose/license/maintenance/arch/features/compat/security/reuse_level/pros/cons）/recommendation/reason/evidence |
+| repository_understanding | relevant_files/existing_capabilities+components/dependencies/integration_points/duplicate_functionality/potential_conflicts/risks/recommendations/evidence |
+| architecture_result | problem_definition/architecture/components[]/data_flow/control_flow/integration_points/reuse+new+modified/components/implementation_strategy+steps/acceptance_criteria/test_strategy/risks/rollback_strategy/open_questions |
+| implementation_plan | objective/repository/architecture_summary/reuse[component,reason]/modify[component,reason]/create[component,reason]/steps[step,owner,dep,acc]/testing/validation/review/rollback/definition_of_done |
+
+---
+
+## 6. Artifact persistence
+
+每个任务落盘 `.tasks/<task_id>/`（repository filesystem，无数据库），含 `handoff-log.md` 交接日志。见 `protocols/artifact-persistence.md`。
+
+真实验收任务 `.tasks/DT-20260820-002/` 共 7 个文件：development-task + 5 个 Artifact + handoff-log。
+
+---
+
+## 7. GitHub search mechanism
+
+搜索优先级：当前 Repo → Agent OS → OpenClaw → 已装 Skills → GitHub → 官方 API/SDK → 其他开源。
+
+真实验证：Solution Researcher 用 `web_search` 搜「lottery mean reversion / 大乐透 选号 遗漏」，命中 `zxz0119/lottery-ai-simulator`（README 明确「使用热号、冷号、遗漏、统计特征生成候选号码」）及多个 ML 预测项目。结论 `NO_SUITABLE_EXISTING_SOLUTION`（整体系统/ML 方案与「dlt-simulator 现有 compute_weights 分支内新增纯统计策略」的粒度/依赖/定位不符）+ `LEARN_AND_BUILD`（遗漏作为统计特征是有佐证的业界做法）。
+
+---
+
+## 8. Reuse decision mechanism
+
+- `reuse_level ∈ {DIRECT_REUSE, ADAPT, LEARN_AND_BUILD, NOT_SUITABLE}`。
+- Agent OS 已有相同能力 → `REUSE_EXISTING_CAPABILITY` 禁止重复实现。
+- 复用 vs 新建判定表：已有几乎一样→复用；相近→修改；没有→新建（附充分理由）。
+- 见 `protocols/reuse-decision.md`。
+
+本任务的复用决策：复用 `compute_weights` 已算好的 front_last_seen/back_last_seen + 完整候选生成链路，只新增一个 mean_reversion 分支。
+
+---
+
+## 9. E2E tests + 结果
+
+### 9.1 5 个场景（scripts/e2e_scenarios.py）— ALL PASS
 
 ```
-$ python3 scripts/e2e_target.py
-self_test PASS: hello() -> hello, world
+[PASS] Test1 简单函数 → Requirement→Developer 不强制 Architect
+[PASS] Test2 新 Skill → Requirement→Repository→Architect→Developer
+[PASS] Test3 复杂(Agent/Runtime集成) → 加 Solution Researcher，且在 Repository 之前
+[PASS] Test3a Solution Researcher 找到现成(LEARN_AND_BUILD) → 正常进下一阶段
+[PASS] Test4 Agent OS 已有相同能力 → REUSE_EXISTING_CAPABILITY 禁止重复实现
+[PASS] Test5 Architect 发现需求与现有架构冲突 → RETURN_TO_ARCHITECT 不继续 Developer
 ```
 
-**Minimal Validator（5 项校验）真实跑通 PASS / FAIL 两条路径**：
+### 9.2 Artifact 链 + 路由逻辑（scripts/e2e_phase2.py）— 8/8 PASS
 
-- PASS 路径（changed_files 全部存在）：
-  ```
-  [PASS] changed_files 存在 / 执行测试 / 测试通过 / acceptance_criteria 满足 / git diff 合理
-  verification status: PASS  (exit 0)
-  ```
-- FAIL 路径（声称的文件缺失）：
-  ```
-  [FAIL] git diff 合理: changed_files 声称的文件不存在: ['test_hello.py']
-  verification status: FAIL  (exit 1)
-  ```
-
-这证明：Validator 能正确区分"证据完备 PASS"与"证据缺失 FAIL"，不是无条件放行。
-
-### 5.2 未能真实跑通的部分 —— 需要 Main Agent 会话执行
-
-**关键约束（已核实，非臆造）**：
-
-1. 本施工者是 **depth-1 subagent（leaf）**。按官方 subagents 文档，leaf sub-agent
-   **没有** `sessions_spawn` / `subagents` / `sessions_list` / `sessions_history`。
-2. 我的实际工具集（runtime 注入）仅含：
-   `apply_patch, edit, exec, memory_get, memory_search, process, read, web_fetch, web_search, write`
-   —— **不含** `sessions_spawn` / `sessions_yield` / `sessions_send` / `subagents` / `sessions_list` / `sessions_history`。
-3. 因此 `Lead → sessions_spawn → Developer → completion → sessions_yield` 这条**真实 agent-to-agent 闭环**
-   只能由 **Main Agent 会话**（本机 `main` 角色，其 `tools.allow` 已含 `sessions_spawn`/`sessions_send`/`subagents`）执行。
-4. 另发现：`sessions_yield` **不在** Main Agent 的 `tools.allow` 白名单中（见配置 `tools.allow` 列表：
-   有 sessions_spawn/sessions_send/sessions_list/sessions_history/subagents，但**无 sessions_yield**）。
-   若主会话要跑 Result Closure，需先确认 `sessions_yield` 是否可用；不可用则不能造 polling loop，
-   必须按文档"回报"而非硬跑。
-
-### 5.3 结论
-
-- 我已实现完整的 Phase 1 系统（协议 + 角色 + 契约 + 模板 + Validator + E2E 脚本）。
-- 本地可验证链路（hello 目标 + Validator PASS/FAIL）**已真实跑通**。
-- 真实 `sessions_spawn → sessions_yield` 的 agent-to-agent 闭环，受我的运行身份（leaf subagent）
-  与配置（主会话缺 sessions_yield）双重约束，**必须由主会话执行并确认**，我在此如实记录并回报，
-  不 mock、不臆造。
-
----
-
-## 6. 主会话执行真实 E2E 的指引（供 Main Agent 参考）
-
-```text
-1. 由 Main Agent（Development Lead）读 dev-team-phase1/scripts/e2e_runner.py 生成的 Task/Delegation。
-2. 用 sessions_spawn 委派：
-   sessions_spawn(
-     task = "你是 Developer。在 <TARGET_DIR> 新增 hello() 实现 + 自测... 回传 Implementation Result YAML",
-     taskName = "dt-20260820-001",
-     label = "developer: hello 函数",
-     context = "isolated"
-   )
-3. 调 sessions_yield 等待 completion。
-4. 收到 completion（Status + assistant 文本）→ 解析 Implementation Result。
-5. 运行 scripts/verifier.py <impl_result.yaml> <TARGET_DIR> → 期望 PASS。
-6. 记录证据：OpenClaw version / sessions_spawn 参数 / requester session / child session /
-   completion delivery route / 实际结果。
+```
+[PASS] V_SCH requirement-result: 16 required fields 齐备且非空
+[PASS] V_SCH solution-discovery-result: 9 required fields 齐备且非空
+[PASS] V_SCH repository-understanding: 15 required fields 齐备且非空
+[PASS] V_SCH architecture-result: 20 required fields 齐备且非空
+[PASS] V_SCH implementation-plan: 14 required fields 齐备且非空
+[PASS] V_LINK: task_id=DT-20260820-002 贯穿所有 Artifact，type 一致
+[PASS] V_LINK handoff-log: 记录了全部 4 个角色交接
+[PASS] V_ROUTE: 复杂度路由 + 六项校验分支正确
 ```
 
 ---
 
-## 7. 当前限制
+## 10. Known limitations
 
-1. 我是 leaf subagent，无 sessions_spawn/sessions_yield，真实闭环需主会话执行。
-2. 主会话 `tools.allow` 缺 `sessions_yield`（需确认是否有别处配置或 profile 供给）。
-3. Validator 是 Stub（Phase 2 才做完整 Validator + Repository Reviewer）。
-4. 未做 Phase 2 角色（Requirement Analyst / Solution Researcher / Repository Analyst / Architect / Release Manager）。
-5. 未 push（按规范由主会话走 Release Gate）。
+1. **真实 sessions_spawn/yield 闭环需 Main Agent 会话执行**：本施工者是 depth-1 leaf subagent，无 `sessions_spawn`/`sessions_yield`/`subagents`，与 Phase 1 相同约束。我交付的是「逻辑可跑通 + Artifact 真实填充 + 路由逻辑正确」的完整系统；真正让 4 个角色作为独立子代理并存、由 Lead 通过 spawn/yield 动态委派，需由 Main Agent（Development Lead）执行。
+2. **schema key 校验用极简 YAML 解析**：`e2e_phase2.py` 不依赖 pyyaml（无第三方依赖），用缩进+冒号提取顶层 key，校验 required fields 存在与非空。YAML **格式正确性**已另用 `python3 -c "import yaml"` 单独验证（全部 OK）。
+3. **不进入真正开发**：Phase 2 只到 Implementation Plan，dlt-simulator 策略尚未真实实现（那是 Developer / Phase 3）。
+4. **复杂路由中 Solution Researcher 是建议位**：本任务 MEDIUM 但因「是否有现成方案」存疑，Lead 主动补一步 Solution Researcher（符合「复杂度是建议，最终 Lead 定」）。
 
-## 8. 安全
+---
 
-- 无真实 API key / token / 邮箱 / 机器 hash（git 身份用 noreply）。
+## 11. Git diff 摘要 + commit
+
+- 新增 14 个文件（4 角色 AGENTS + 4 协议 + 5 模板 + 2 脚本 + .tasks 目录 8 文件）。
+- 修改 5 个文件（AGENTS.md / README.md / PROTOCOL.md / IMPLEMENTATION_SPEC.md / agents/developer/AGENTS.md）。
+- 未 push（由主会话经 Release Gate 处理）。
+
+（commit hash 见 git log，随本次提交生成。）
+
+---
+
+## 12. 安全
+
+- 无真实 API key / token / 邮箱（git 用 noreply）/ 机器 hash。
 - 未改主会话 OpenClaw 配置 / 权限 / 安全 / AGENTS / MEMORY / SOUL。
 - 未 self-edit 权限。
-- 未 push。
+- GitHub 搜索仅在报告/Artifact 中引用仓库名与功能描述，不落盘任何外部联系人邮箱。

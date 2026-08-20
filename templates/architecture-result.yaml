@@ -1,0 +1,41 @@
+# templates/architecture-result.yaml — Architecture Result（Architect 产出）
+type: architecture_result
+task_id: DT-YYYYMMDD-001
+problem_definition: "一句话问题定义"
+architecture: "总体架构描述（分层/模块/数据流一句话）"
+components:
+  - name: "组件名"
+    type: "component_type"       # 复用现有 / 修改现有 / 新增
+    responsibility: "职责"
+    interacts_with:
+      - "与哪些组件交互"
+    design_rationale: "为什么这么设计"
+data_flow: "数据如何流转"
+control_flow: "控制如何流转"
+integration_points:
+  - "集成点"
+reuse_components:
+  - "复用现有组件（来自 repository_understanding 的 existing_components）"
+new_components:
+  - "新增组件"
+modified_components:
+  - "修改现有组件 + 改什么"
+implementation_strategy: "落地策略：分几步、顺序、是否 staged"
+implementation_steps:
+  - "步骤（对齐 implementation plan steps 雏形）"
+acceptance_criteria:
+  - "可验证验收标准（继承并细化 requirement_result）"
+test_strategy: "如何测试：单测/集成/E2E/回测"
+risks:
+  - "风险 + 缓解"
+rollback_strategy: "如何回滚"
+open_questions:
+  - "遗留问题（重大则置 HUMAN_DECISION_REQUIRED）"
+# 必须回答的 7 问（可直接嵌入对应字段）：
+#   1. 为什么这么设计 → design_rationale / architecture
+#   2. 为何不复用现有 → reuse_components + modified/new 的 reason
+#   3. 哪些存在/修改/新增 → reuse/modified/new components
+#   4. 与 Agent OS 冲突吗 → risks / open_questions 里显式声明
+#   5. 与现有 Skill 冲突吗 → risks / open_questions 里显式声明
+#   6. 如何验证 → test_strategy + acceptance_criteria
+#   7. 如何回滚 → rollback_strategy

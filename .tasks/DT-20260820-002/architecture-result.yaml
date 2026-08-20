@@ -1,0 +1,59 @@
+type: architecture_result
+task_id: DT-20260820-002
+status: COMPLETED
+producer: architect
+problem_definition: 在 dlt-simulator 现有 compute_weights 单分支策略体系内，新增一个基于遗漏值回归的纯统计选号策略（mean_reversion），且不破坏现有 balanced/hot/cold/trend。
+architecture: 保持 generator.py 单一入口 + if/elif 策略分支的现状架构不变，新增一个 mean_reversion 分支，复用 compute_weights 内已算好的 front_last_seen / back_last_seen 遗漏数据做连续性加权；不引入策略类/插件系统，不新增文件，仅改 compute_weights + 文档。
+components:
+  - name: "compute_weights.mean_reversion 分支"
+    type: "新增（compute_weights 内 elif 分支）"
+    responsibility: "按『遗漏值越大权重越高』给前区/后区号码加权（遗漏值连续性映射，而非 cold 的单点二值化）"
+    interacts_with:
+      - "compute_weights 已算好的 front_last_seen / back_last_seen"
+      - "generate_pool / rank_candidates（下游复用该权重）"
+    design_rationale: "复用现有遗漏数据与分支模式，最小改动；与 cold 策略区分——cold 是『取末次出现最早的 N 个』离散集合，mean_reversion 是对每个号码按遗漏值做连续性权重（遗漏期数单调递增映射），语义更贴近统计回归"
+  - name: "SKILL.md 选号策略表"
+    type: "修改（文档）"
+    responsibility: "新增 mean_reversion 策略说明，并注明与 cold 的区别"
+    interacts_with: []
+    design_rationale: "保持文档与代码同步，避免用户混淆 mean_reversion 与 cold"
+data_flow: fetch_history →（历史数据）→ compute_weights（含新 mean_reversion 分支，基于 front_last_seen/back_last_seen 算权重）→ weighted_sample 生成候选 →（候选池）→ rank_candidates 评分 → filter_overlap 过滤 → 输出 Top N
+control_flow: CLI --strategy mean_reversion → compute_weights(draws, "mean_reversion", window) → 走新 elif 分支 → 返回权重 → 其余流程复用现有 generate_pool/rank_candidates
+integration_points:
+  - "generator.compute_weights 的策略字符串分支（新增 mean_reversion case）"
+  - "generator.py __main__ 的 --strategy argparse 参数（无需改，已透传）"
+  - "SKILL.md『选号策略』表（文档集成点）"
+reuse_components:
+  - "front_last_seen / back_last_seen（compute_weights 已算好，直接复用，不重复扫历史）"
+  - "generate_pool / rank_candidates / filter_overlap（候选生成与评分链路完全复用）"
+  - "statistics.omission_analysis 思路（复用其『遗漏 = 距上次出现期数』语义）"
+new_components:
+  - "compute_weights 的 mean_reversion elif 分支（唯一真正新增的逻辑）"
+modified_components:
+  - "generator.compute_weights：新增一个 elif 分支 + 策略列表注释"
+  - "SKILL.md：选号策略表 + 通用命令说明各加一行"
+implementation_strategy: staged，2 步：先改 generator.py 加分支并本地回归现有四策略，再改 SKILL.md 文档。复用现有测试入口（python3 generator.py --strategy <name>）验证。
+implementation_steps:
+  - "在 compute_weights 加入 mean_reversion 分支（复用 front_last_seen/back_last_seen，遗漏值单调映射为权重）"
+  - "更新 SKILL.md 选号策略表与命令说明"
+  - "回归验证：balanced/hot/cold/trend 输出与改动前一致 + mean_reversion 可调用不崩"
+acceptance_criteria:
+  - "compute_weights 支持 mean_reversion 且调用不崩"
+  - "mean_reversion 权重 = 遗漏值越大权重越高（可观测：长期未出号码权重大于刚出号码）"
+  - "balanced/hot/cold/trend 输出与改动前一致（回归通过）"
+  - "SKILL.md 选号策略表新增一行 mean_reversion 说明"
+  - "有测试证据（策略调用输出 + 回归对比）"
+test_strategy: "单测/冒烟：直接调 compute_weights(draws, 'mean_reversion', window) 断言权重随遗漏递增；回归：对同一 draws 分别跑 balanced/hot/cold/trend，对比改动前后输出一致；CLI 冒烟：python3 generator.py --strategy mean_reversion 能跑通不崩。"
+risks:
+  - "策略语义与 cold 部分重叠 → 缓解：命名 mean_reversion + 文档显式区分，且实现上遗漏值连续性加权（非离散取集合），行为可区分"
+  - "改动 compute_weights 公共入口影响现有策略 → 缓解：仅新增 elif 分支，不改现有分支逻辑，回归测试兜底"
+rollback_strategy: "改动集中在单个 elif 分支 + 文档，回滚即删除该分支并还原 SKILL.md 那一行；不涉及配置/数据/其他模块，git revert 单 commit 即可完全回退。"
+open_questions: []
+# 七问回答摘要：
+# 1 为什么这么设计 → 最小改动复用现有分支模式与遗漏数据（design_rationale）
+# 2 为何不复用现有 → 现有 cold 是离散集合，语义不同；无现成遗漏回归策略分支
+# 3 存在/修改/新增 → reuse: front_last_seen 等；modify: compute_weights + SKILL.md；new: mean_reversion 分支
+# 4 与 Agent OS 冲突吗 → 无冲突：Agent OS 无大乐透选号能力，本改动不触及其治理框架
+# 5 与现有 Skill 冲突吗 → 无冲突：仅扩展 dlt-simulator 自身策略选项，不越界到其他 Skill
+# 6 如何验证 → test_strategy（单测断言 + 回归 + CLI 冒烟）
+# 7 如何回滚 → git revert 单 commit（rollback_strategy）

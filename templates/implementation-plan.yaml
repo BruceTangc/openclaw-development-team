@@ -1,0 +1,26 @@
+# templates/implementation-plan.yaml — Implementation Plan（Architect 最终核心产物）
+type: implementation_plan
+task_id: DT-YYYYMMDD-001
+objective: "目标"
+repository: "目标仓库"
+architecture_summary: "架构一句话"
+reuse:
+  - component: "组件名"
+    reason: "为什么复用"
+modify:
+  - component: "组件名"
+    reason: "为什么修改 / 改什么"
+create:
+  - component: "组件名"
+    reason: "为什么新增"
+steps:
+  - step: "步骤名"
+    owner: developer
+    dependencies: []      # 前置步骤
+    acceptance_criteria:
+      - "该步验收标准（可验证）"
+testing: "测试安排"
+validation: "验证方式"
+review: "评审安排（Repository Reviewer）"
+rollback: "回滚方案"
+definition_of_done: "完成的唯一定义（可验证，V2 可观测）"

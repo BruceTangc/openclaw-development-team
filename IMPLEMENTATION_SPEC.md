@@ -1,6 +1,8 @@
 # IMPLEMENTATION_SPEC.md — 实现规范 + E2E 验收清单
 
-OpenClaw Development Team v1.0 Phase 1 的实现规范。
+OpenClaw Development Team v1.0（Phase 1 + Phase 2）的实现规范。
+
+> Phase 1 = §1-7（Result Closure + Minimal Validator + E2E）。Phase 2 = §8-13（新增角色 + 4 schema + 路由 + 持久化 + 复用 + 5 场景）。
 
 ---
 
@@ -104,3 +106,106 @@ task_id / status(PASS|FAIL|BLOCKED) / tests / acceptance_criteria / findings / e
   - 因此真正 spawn/yield 的 E2E 必须由 **Main Agent 会话**（本机 `main` 角色，已授予 `sessions_spawn`/`sessions_send`/`subagents`）执行。
   - `sessions_yield` 当前**不在** `tools.allow` 白名单中（见配置），需要确认主会话是否可用；不可用则记录并回报，不造 polling loop。
 - 详见 `README.md` 与最终施工报告。
+
+---
+
+## 8. Phase 2 新增角色（4 个）
+
+| 角色 | 产出 Artifact | 关键职责 | 落盘文件 |
+|:--|:--|:--|:--|
+| Requirement Analyst | `requirement_result` | 自然语言→结构化需求，不扩大需求/不把猜测当事实 | `requirement-result.yaml` |
+| Solution Researcher | `solution_discovery_result` | 搜索优先级 + GitHub 分析，找不到 Must NO_SUITABLE_EXISTING_SOLUTION | `solution-discovery-result.yaml` |
+| Repository Analyst | `repository_understanding` | 只读理解现状（结构/能力/依赖/重复/冲突/风险） | `repository-understanding.yaml` |
+| Architect | `architecture_result` + `implementation_plan` | 三输入→架构+方案，必答七问 | `architecture-result.yaml` + `implementation-plan.yaml` |
+
+> 角色定义见 `agents/*/AGENTS.md`；schema 模板见 `templates/*.yaml`。
+
+---
+
+## 9. 4 个 Schema + Implementation Plan Schema
+
+### Requirement Result
+```
+type/task_id/status/producer/user_request/goal/problem/expected_outcome/
+functional_requirements/non_functional_requirements/constraints/scope(in/excluded)/
+assumptions/unknowns/acceptance_criteria/risk_level/recommended_path
+```
+
+### Solution Discovery Result
+```
+type/task_id/status/producer/search_scope/candidates[]（name/repository/purpose/license/
+maintenance/architecture_summary/relevant_features/compatibility/security_notes/
+reuse_level/pros/cons）/recommendation/reason/evidence
+```
+> `reuse_level ∈ {DIRECT_REUSE, ADAPT, LEARN_AND_BUILD, NOT_SUITABLE}`
+
+### Repository Understanding
+```
+type/task_id/status/producer/repository/relevant_files/existing_capabilities/
+existing_components/dependencies/integration_points/duplicate_functionality/
+potential_conflicts/risks/recommendations/evidence
+```
+
+### Architecture Result
+```
+type/task_id/status/producer/problem_definition/architecture/components[]/data_flow/control_flow/
+integration_points/reuse_components/new_components/modified_components/
+implementation_strategy/implementation_steps/acceptance_criteria/test_strategy/risks/
+rollback_strategy/open_questions
+```
+
+### Implementation Plan（Architect 最终核心产物）
+```
+type/task_id/objective/repository/architecture_summary/reuse[component,reason]/
+modify[component,reason]/create[component,reason]/steps[step,owner,dependencies,acceptance_criteria]/
+testing/validation/review/rollback/definition_of_done
+```
+
+---
+
+## 10. Lead 动态路由逻辑
+
+Lead 是唯一 Orchestrator，不固定流水线。实现最小决策树 + 复杂度判断 + 六项校验：
+
+- **复杂度路由（建议）**：简单→Developer；中等→Repo Analyst→Architect→Developer；复杂→Solution Researcher→Repo Analyst→Architect→Developer。
+- **六项校验**：task_id / status / required fields / acceptance_criteria / evidence / blocking issue。
+- **分支**：不完整→RETRY_ROLE；重大冲突→RETURN_TO_ARCHITECT；需求不清→HUMAN_DECISION_REQUIRED；复用已有→REUSE_EXISTING_CAPABILITY；完整→下一阶段。
+- **复杂度只是建议**，最终 Lead 判断。
+
+> 逻辑见 `AGENTS.md` + `protocols/routing.md`。
+
+---
+
+## 11. Artifact Persistence
+
+工程 Artifact 持久化到 `.tasks/<task_id>/`，用 repository filesystem，不做复杂数据库：
+
+```
+.tasks/<task_id>/
+├── development-task.yaml / requirement-result.yaml
+├── solution-discovery-result.yaml / repository-understanding.yaml
+├── architecture-result.yaml / implementation-plan.yaml
+└── handoff-log.md
+```
+
+---
+
+## 12. GitHub Search + Reuse Decision 机制
+
+- **搜索优先级**：当前 Repo → Agent OS → OpenClaw → 已装 Skills → GitHub → 官方 API/SDK → 其他开源。
+- **GitHub 候选分析**：repository/purpose/features/architecture/license/maintenance/recent_activity/dependencies/security/compatibility/reuse_feasibility。
+- **复用决策**：DIRECT_REUSE / ADAPT / LEARN_AND_BUILD / NOT_SUITABLE；Agent OS 已有相同能力→REUSE_EXISTING_CAPABILITY 禁止重复实现；找不到→NO_SUITABLE_EXISTING_SOLUTION（禁止假装找到）。
+
+> 见 `protocols/reuse-decision.md`。
+
+---
+
+## 13. Phase 2 E2E（5 个场景，硬性）
+
+1. [ ] Test1 简单函数 → Requirement → Developer，不强制 Architect
+2. [ ] Test2 新 Skill → Requirement → Repository Analyst → Architect → Developer
+3. [ ] Test3 GitHub 已有类似 → 加 Solution Researcher → GitHub Search → Reuse/Adapt/Build → Repository → Architect → Developer
+4. [ ] Test4 Agent OS 已有相同能力 → Lead 判 REUSE_EXISTING_CAPABILITY 禁止重复实现
+5. [ ] Test5 Architect 发现需求与现有架构冲突 → RETURN_TO_ARCHITECT 不继续 Developer
+
+> 执行：`python3 scripts/e2e_scenarios.py`；验证：`python3 scripts/e2e_phase2.py`。

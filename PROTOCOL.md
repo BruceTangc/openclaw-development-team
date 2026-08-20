@@ -1,6 +1,8 @@
-# PROTOCOL.md — Phase 1 协议
+# PROTOCOL.md — 开发团队协议
 
-OpenClaw Development Team v1.0 Phase 1 的核心协议规范。
+OpenClaw Development Team v1.0（Phase 1 + Phase 2）的核心协议规范。
+
+> Phase 1 = Result Closure（§1-5）。Phase 2 = Role Handoff + Artifact Persistence + Dynamic Routing（§6-10，新增）。
 
 ---
 
@@ -130,3 +132,59 @@ Development Lead (Main Agent)
 - 不改主会话 OpenClaw 配置/权限/安全/AGENTS/MEMORY/SOUL。
 - 不 self-edit 权限。
 - HUMAN_DECISION_REQUIRED → 回报主会话。
+
+---
+
+## 6. 角色与 Artifact（Phase 2 新增）
+
+| 角色 | 产出 Artifact | 落盘文件 |
+|:--|:--|:--|
+| Requirement Analyst | `requirement_result` | `requirement-result.yaml` |
+| Solution Researcher | `solution_discovery_result` | `solution-discovery-result.yaml` |
+| Repository Analyst | `repository_understanding` | `repository-understanding.yaml` |
+| Architect | `architecture_result` + `implementation_plan` | `architecture-result.yaml` + `implementation-plan.yaml` |
+| Developer | `implementation_result` | `implementation-result.yaml` |
+
+> 详细角色定义见 `agents/*/AGENTS.md`。
+
+---
+
+## 7. Role Handoff（结构化交接）
+
+> 详见 `protocols/role-handoff.md`。
+
+核心：所有角色间通过**结构化 Artifact** 交接，禁止"我觉得应该这样做"。每个 Result 必须含 `type/task_id/status/producer/artifacts/evidence`。
+
+```
+Requirement Result → Solution Discovery → Repository Understanding → Architecture Result → Implementation Plan
+```
+
+---
+
+## 8. Artifact Persistence
+
+> 详见 `protocols/artifact-persistence.md`。
+
+每个工程 Artifact 持久化到 `.tasks/<task_id>/`，用 repository filesystem，不做复杂数据库。含 `handoff-log.md` 交接日志。
+
+---
+
+## 9. Dynamic Routing（Lead 决策树）
+
+> 详见 `protocols/routing.md`。
+
+Lead 是唯一 Orchestrator，不固定流水线，按复杂度路由：
+
+- **简单**（typo/单文件/文档/配置/明确 bug）→ Requirement Analyst → Developer
+- **中等**（多文件/新 Skill/新功能/API集成/数据处理）→ Requirement Analyst → Repository Analyst → Architect → Developer
+- **复杂**（新Agent/新Team/新架构/Agent OS集成/Runtime集成/数据库/多系统/安全/大refactor）→ Requirement Analyst → Solution Researcher → Repository Analyst → Architect → Developer
+
+复杂度是建议，最终 Lead 判断。
+
+---
+
+## 10. Reuse Decision
+
+> 详见 `protocols/reuse-decision.md`。
+
+Existing Solutions Preflight：Agent OS / 现有 Skill / 外部开源（GitHub/官方 SDK）已有时，优先复用；Agent OS 已有相同能力 → `REUSE_EXISTING_CAPABILITY` 禁止重复实现。

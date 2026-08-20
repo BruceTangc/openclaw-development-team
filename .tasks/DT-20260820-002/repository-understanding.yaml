@@ -1,0 +1,43 @@
+type: repository_understanding
+task_id: DT-20260820-002
+status: COMPLETED
+producer: repository_analyst
+repository: /root/.openclaw/workspace/_ref-tts-public/dlt-simulator
+relevant_files:
+  - scripts/generator.py — compute_weights() 内聚合所有选号策略的分支（balanced/hot/cold/trend），是新增策略的唯一落点；score_candidate()/generate_top_candidates() 复用 compute_weights 的权重
+  - scripts/common.py — load_config/save_json/mean/variance/std 及路径常量，供各模块复用
+  - scripts/statistics.py — 已有 omission_analysis() 产出遗漏值（front_omission/back_omission），可作为新策略的统计参照
+  - scripts/strategy_manager.py — 策略版本管理（KEEP/ADJUST/REVERT），与「选号策略」无关，不涉及本需求
+  - SKILL.md — 「选号策略」表与「所有可用命令」表，需同步新增策略说明
+  - config/config.json — 全局参数（front_min/max/pick、back_min/max/pick 等），本需求不改
+existing_capabilities:
+  - 基于历史开奖的多维度统计分析（frequency/omission/sum/odd_even/zone/trend）
+  - 候选组合生成 + 多维度评分 + 重叠过滤（generator.py 完整链路）
+  - 四种选号策略：balanced / hot / cold / trend（compute_weights 内 if/elif 分支）
+  - 遗漏值分析（statistics.py omission_analysis，已产出每个号码距上次出现的期数）
+existing_components:
+  - generator.compute_weights(draws, strategy, window) — 策略权重入口，含 front_last_seen/back_last_seen 遗漏数据
+  - generator.generate_pool / rank_candidates / filter_overlap / generate_top_candidates
+  - statistics.omission_analysis(draws) — 遗漏值计算
+  - common.load_config / save_json / mean / variance / std
+dependencies:
+  - 纯 Python 标准库（random/math/collections/json/pathlib），无第三方依赖
+  - 数据源依赖 fetch_history.py（官方体彩 API 缓存到 data/history_draws.json）
+integration_points:
+  - compute_weights 的 strategy 参数（字符串分支）是选号策略的统一入口
+  - generator.py 的 __main__ argparse --strategy 参数
+  - SKILL.md「选号策略」表与「所有可用命令」表（文档集成点）
+  - common.py 的 load_config 读取的 front/back 上下界（新策略权重范围依赖）
+duplicate_functionality:
+  - 遗漏值已在 statistics.omission_analysis 与 generator.compute_weights 内分别计算，存在逻辑重复（本需求不引入新重复，仅复用 compute_weights 已算好的 front_last_seen/back_last_seen）
+potential_conflicts:
+  - 新策略名需避开现有 balanced/hot/cold/trend 及 generator 内其他关键字（否则分支冲突）
+  - compute_weights 对后区 cold 分支已有遗漏值权重，新 mean_reversion 若过于相似需区分语义，避免策略职责重叠
+risks:
+  - 策略语义重叠：新「遗漏回归」与现有「cold」策略部分重叠，需在文档/命名上清晰区分（否则用户混淆）
+  - 回归风险：改动 compute_weights 公共入口可能影响现有四策略，需回归验证
+recommendations:
+  - 新策略作为 compute_weights 的独立 elif 分支，复用已算好的 front_last_seen/back_last_seen，不新增数据接口
+  - 命名用 mean_reversion，文档明确其与 cold 的区别（cold 偏向长期未出单点，mean_reversion 给出遗漏值的连续性加权）
+  - 回归测试覆盖现有四策略输出不变
+evidence: 已读 generator.py（compute_weights 分支 full text）、common.py、statistics.py（omission_analysis）、SKILL.md（选号策略表 4 项）与 config.json（front/back 参数）

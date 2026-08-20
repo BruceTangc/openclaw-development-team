@@ -1,0 +1,43 @@
+type: requirement_result
+task_id: DT-20260820-002
+status: COMPLETED
+producer: requirement_analyst
+user_request: "给 dlt-simulator 增加一个统计分析策略（类似 mean-reversion / 遗漏回归）"
+goal: 给大乐透模拟器新增一个基于统计分析（遗漏值回归）的选号策略
+problem: 现有策略（balanced/hot/cold/trend）主要以频率和简单趋势为主，缺少一个显式基于「遗漏值回归」（长期未出的号码倾向于回补）的统计选号策略；用户希望把这类统计思路作为一个可选策略加入 generator.py 的策略分支体系。
+expected_outcome: 运行 generator.py --strategy <新策略名> 能生成候选组合，且现有四个策略行为不变，SKILL.md 策略表同步更新。
+functional_requirements:
+  - FR-1: generator.py 的 compute_weights 支持一个新策略名（如 mean_reversion），走基于遗漏值的权重分支
+  - FR-2: 新策略按「遗漏值越大权重越高」的思路给前区/后区号码加权
+  - FR-3: 新策略可通过 --strategy 参数从 CLI 调用（对齐现有 hot/cold/trend 的调用方式）
+  - FR-4: SKILL.md 的「选号策略」表新增一行说明新策略
+non_functional_requirements:
+  - NFR-1: 向后兼容——现有 balanced/hot/cold/trend 四策略输出与改动前一致
+  - NFR-2: 纯统计选号，不涉及奖金预测/ROI/中奖率主张（遵守项目铁律）
+  - NFR-3: 代码风格与现有 compute_weights 一致（纯函数、无副作用、可单测）
+constraints:
+  - 不改 config.json / strategy_manager.py / fetch_history.py / prize_checker.py 等无关模块
+  - 不改官方中奖规则，不做奖金金额预测
+  - 不 push / 不建 PR / 不 release
+  - 脱敏（无 key/token/邮箱/hash）
+scope:
+  included:
+    - generator.py 的 compute_weights 新增策略分支
+    - SKILL.md 选号策略表更新
+    - 回归验证现有四策略行为
+  excluded:
+    - 新增独立 strategy 文件（沿用现有 compute_weights 内分支结构，不引入策略插件系统）
+    - 修改数据抓取、中奖判定、复盘逻辑
+assumptions:
+  - A1: 新策略沿用 compute_weights 内的 if/elif 分支模式，而非引入策略类/策略插件（与现有 hot/cold/trend 一致，保持最小改动）
+  - A2: 遗漏值信息来源复用 compute_weights 已算好的 front_last_seen / back_last_seen，不新增数据接口
+  - A3: 策略名用 mean_reversion（或用户后续可改，当前假设合理命名）
+unknowns: []
+acceptance_criteria:
+  - generator.py compute_weights 支持新策略名且调用不崩
+  - 新策略权重逻辑 = 遗漏值越大权重越高（可观测：长期未出号码权重高于刚出号码）
+  - 现有 balanced/hot/cold/trend 输出与改动前一致（回归通过）
+  - SKILL.md 选号策略表新增一行
+  - 有测试证据（策略调用 + 回归对比）
+risk_level: MEDIUM
+recommended_path: STANDARD

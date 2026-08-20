@@ -1,0 +1,23 @@
+# templates/repository-understanding.yaml — Repository Understanding（Repository Analyst 产出）
+type: repository_understanding
+task_id: DT-YYYYMMDD-001
+repository: "仓库/项目路径"
+relevant_files:
+  - "path/to/file — 一句话用途"
+existing_capabilities:
+  - "已有能力（功能/模块）"
+existing_components:
+  - "已存在组件（类/函数/脚本/策略）"
+dependencies:
+  - "依赖（库/模块/外部服务/配置文件）"
+integration_points:
+  - "集成点（函数入口/配置项/数据流）"
+duplicate_functionality:
+  - "已发现的功能重复（只记录，不删改）"
+potential_conflicts:
+  - "潜在冲突（命名/逻辑/边界）"
+risks:
+  - "风险"
+recommendations:
+  - "建议（供 Architect 参考，非强制的架构结论）"
+evidence: "文件路径 / 命令输出摘要（非空）"
