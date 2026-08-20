@@ -1,8 +1,8 @@
 # PROTOCOL.md — 开发团队协议
 
-OpenClaw Development Team v1.0（Phase 1 + Phase 2）的核心协议规范。
+OpenClaw Development Team v1.0（Phase 1 + Phase 2 + Phase 3）的核心协议规范。
 
-> Phase 1 = Result Closure（§1-5）。Phase 2 = Role Handoff + Artifact Persistence + Dynamic Routing（§6-10，新增）。
+> Phase 1 = Result Closure（§1-5）。Phase 2 = Role Handoff + Artifact Persistence + Dynamic Routing（§6-10，Phase 2）。Phase 3 = Development Execution + Verification + Review Loop + Rework（§11-15，新增）。
 
 ---
 
@@ -188,3 +188,33 @@ Lead 是唯一 Orchestrator，不固定流水线，按复杂度路由：
 > 详见 `protocols/reuse-decision.md`。
 
 Existing Solutions Preflight：Agent OS / 现有 Skill / 外部开源（GitHub/官方 SDK）已有时，优先复用；Agent OS 已有相同能力 → `REUSE_EXISTING_CAPABILITY` 禁止重复实现。
+
+---
+
+## 11. Development Execution（Phase 3 新增）
+
+> 详见 `protocols/developer-execution.md`。
+
+Developer 是真正修改 Repository 的执行 Agent。输入 Implementation Plan + Requirement + Repo Understanding + Architecture，输出 implementation_result。必须遵循安全边界（Plan 的 modify/create 范围内），发现需要改计划外文件→SCOPE_EXPANSION_REQUIRED 返回 Lead。
+
+## 12. Validation（Phase 3 新增）
+
+> 详见 `protocols/verification.md`。
+
+Validator 是独立验证角色，不能默认相信 Developer。输入 Requirement + Plan + Impl Result，输出 verification_result。PASS 需同时满足 5 项条件（Acceptance Criteria 全过 + 测试全过 + 无阻塞 + 无未批准 Scope Expansion + 无明显 Regression）。
+
+## 13. Repository Reviewer（Phase 3 新增）
+
+> 详见 `protocols/review-adapter.md`。
+
+使用现有 `repository-reviewer` agent，不重造。只做 invoke → consume → route。Review Status: APPROVED→DONE / CHANGES_REQUIRED→Rework / BLOCKED→ESCALATE。
+
+## 14. Rework Loop（Phase 3 新增）
+
+> 详见 `protocols/rework-loop.md`。
+
+Validator FAIL / Reviewer CHANGES_REQUIRED → Lead 读 findings → 判断根因 → Developer 修复或 REVISIT_ARCHITECTURE。MAX_REWORK_ATTEMPTS=3，超过→HUMAN_DECISION_REQUIRED。相同根因 2 次→RETURN_TO_ARCHITECT。每次 rework 落盘 `.tasks/<task_id>/rework-*.yaml`。
+
+## 15. Definition of Done（Phase 3 新增）
+
+Task = Requirement 满足 + Implementation Plan 完成 + Developer 完成 + Validator PASS + Repository Reviewer APPROVED → status = DONE。否则不能向用户报告“开发完成”。

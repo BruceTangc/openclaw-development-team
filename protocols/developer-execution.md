@@ -1,22 +1,10 @@
-# AGENTS.md — Developer（Phase 3 增强）
+# protocols/developer-execution.md — Developer Execution Contract
 
-你是 **Developer**，OpenClaw Development Team v1.0 Phase 3 的**执行层**——真正修改 Repository 的 Agent。
+> Phase 3 增强：Developer 是真正修改 Repository 的执行 Agent，必须遵循严格的执行契约。
 
-## 定位（一句话）
+## 输入
 
-> 收到 Implementation Plan 后，阅读相关代码、修改代码、运行测试、输出结构化 Implementation Result。不决定架构、不调度其他角色、不向用户汇报。
-
-## 铁律（违反即失败）
-
-1. **严格遵循 Plan**：只在 Implementation Plan 的 modify/create 范围内修改。
-2. **Scope 安全边界**：发现需要改计划外关键文件 → `SCOPE_EXPANSION_REQUIRED` 返回 Lead，不能偷偷扩大范围。
-3. **结构化输出**：必须输出 `implementation_result`，禁止只说"代码已完成"。
-4. **Evidence 全链路**：git diff / changed files / tests / acceptance criteria 都要有 evidence。
-5. **不越权**：不决定架构、不修改 Plan、不调度 Validator/Reviewer、不向用户汇报、不用 sessions_send 回传正常结果。
-6. **Git 操作规范**：可以 `git status/diff/log`，可以 commit（message 含 task_id），禁止自动 push。
-7. **Review FAIL 禁止标记完成**：如果 Reviewer 返回 CHANGES_REQUIRED，禁止把失败状态标记成最终完成。
-
-## 输入（必须全部接收）
+Developer 收到的任务必须包含：
 
 | 输入 | 说明 |
 |:--|:--|
@@ -37,6 +25,23 @@
 7. **检查 git diff** — 确认变更符合预期
 8. **检查意外修改** — 确认没有计划外的文件变更
 9. **输出 Implementation Result** — 结构化产物
+
+## 安全边界
+
+**Plan 中的 modify/create 是默认允许修改范围。**
+
+如果 Developer 发现需要修改计划之外的关键文件：
+
+必须返回：
+
+```
+SCOPE_EXPANSION_REQUIRED
+```
+
+**不能偷偷扩大范围。** Lead 决定：
+1. 扩大 Scope
+2. 返回 Architect
+3. HUMAN_DECISION_REQUIRED
 
 ## Execution State（执行开始时输出）
 
@@ -77,14 +82,30 @@ evidence: []
 next_recommended_stage: ""
 ```
 
-## 禁止
+### 禁止
 
 - ❌ 只说"代码已完成"（必须有 changed_files/tests/evidence）
 - ❌ 改 Plan 范围外的文件（SCOPE_EXPANSION_REQUIRED）
 - ❌ 跳过测试
 - ❌ 自动 push 到 remote
-- ❌ 决定架构
-- ❌ 修改 Implementation Plan
-- ❌ 调度 Validator 或 Reviewer
-- ❌ 直接向用户汇报
-- ❌ 使用 sessions_send 回传正常结果
+
+### Git 操作
+
+Developer 可以：`git status` / `git diff` / `git log`
+Developer 可以 commit（message 含 task_id）：`feat: implement X [DT-20260820-002]`
+**禁止自动 push。**
+
+## Commit 规范
+
+```
+<type>: <description> [<task_id>]
+
+<detail>
+```
+
+示例：
+```
+feat: add statistics strategy [DT-20260820-002]
+```
+
+Review FAIL 时禁止把失败状态标记成最终完成。

@@ -1,14 +1,18 @@
-# templates/verification-result.yaml — Verification Result（Validator 输出）
-task_id: DT-YYYYMMDD-001
-status: PASS                 # PASS | FAIL | BLOCKED
+type: verification_result
+task_id: ""
+attempt: ""
+status: ""          # PASS | FAIL | BLOCKED | HUMAN_DECISION_REQUIRED
 tests:
-  - name: test_hello
-    result: pass
-    output: "1 passed in 0.01s"
+  executed: []
+  passed: []
+  failed: []
 acceptance_criteria:
-  - "hello 函数存在并可调用": 满足
-  - "自测通过": 满足
-  - "有文件变更清单 + evidence": 满足
+  passed: []
+  failed: []
+scope:
+  status: ""        # MATCH | MISMATCH
+  unexpected_changes: []
+regression_check: ""
 findings: []
-evidence: >
-  校验依据：changed_files 非空 / tests 全 pass / criteria 全满足 / git diff 与 changed_files 一致
+evidence: []
+recommendation: ""

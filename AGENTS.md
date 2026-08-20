@@ -47,7 +47,21 @@
       ├─ 需求与现有架构冲突 → RETURN_TO_ARCHITECT（不继续 Developer）
       ├─ 需求不清晰 / 重大矛盾 → HUMAN_DECISION_REQUIRED
       └─ 完整 → 进入下一阶段
-  → Architect 产出 implementation_plan → 校验 DoD 完整 → 交付（Phase 2 到此为止，不进入真正开发）
+  → Architect 产出 implementation_plan → 校验 DoD 完整
+  → Developer 执行 → implementation_result
+      ├─ SCOPE_EXPANSION_REQUIRED → Lead 决策（扩大/RETURN_TO_ARCHITECT/HUMAN_DECISION_REQUIRED）
+      ├─ COMPLETED → Validator
+      └─ FAILED/BLOCKED → Lead 诊断 → retry / rework / HUMAN_DECISION_REQUIRED
+  → Validator 验证 → verification_result
+      ├─ PASS → Repository Reviewer（通过 sessions_send 委托审核）
+      ├─ FAIL → Lead 读 findings → Developer 修复（rework loop，MAX 3）
+      └─ BLOCKED → ESCALATE / HUMAN_DECISION_REQUIRED
+  → Reviewer → review_result
+      ├─ APPROVED / APPROVED_WITH_WARNINGS → DONE
+      ├─ CHANGES_REQUIRED → Lead 生成 rework_instruction → Developer → Validator → Reviewer
+      ├─ BLOCKED → ESCALATE / HUMAN_DECISION_REQUIRED
+      └─ 相同根因 2 次 / rework ≥3 → RETURN_TO_ARCHITECT 或 HUMAN_DECISION_REQUIRED
+  → DONE（Definition of Done：Requirement + Plan + Developer + Validator PASS + Reviewer APPROVED）
 ```
 
 ## Lead 校验 Result 的六项检查
@@ -68,7 +82,7 @@
 - **需求不清晰 → HUMAN_DECISION_REQUIRED**：回报主会话，不瞎猜。
 - **完整 → 进入下一阶段**。
 
-## 状态机（Phase 2 扩展）
+## 状态机（Phase 3 扩展）
 
 ```
 NEW → REQUIREMENT_ANALYSIS → (ROUTING_DECISION)
@@ -77,9 +91,21 @@ NEW → REQUIREMENT_ANALYSIS → (ROUTING_DECISION)
       ├─ medium → REPOSITORY_ANALYSIS → ARCHITECTURE → DEVELOPMENT
       └─ complex → SOLUTION_RESEARCH → REPOSITORY_ANALYSIS → ARCHITECTURE → DEVELOPMENT
                                     │
-  任一步校验失败 → RETRY_ROLE / RETURN_TO_ARCHITECT / HUMAN_DECISION_REQUIRED
+  DEVELOPMENT:
+    Developer → IMPLEMENTATION_COMPLETED
+      ├─ SCOPE_EXPANSION_REQUIRED → Lead 决策
+      ├─ COMPLETED → Validator
+      └─ FAILED/BLOCKED → Rework → Developer
+    Validator → VERIFYING
+      ├─ PASS → REVIEWING (→ Repository Reviewer)
+      └─ FAIL → Rework → Developer
+    Reviewer → review_result
+      ├─ APPROVED → DONE
+      └─ CHANGES_REQUIRED → Rework → Developer → Validator → Reviewer
                                     │
-  ARCHITECTURE 完成 → IMPLEMENTATION_PLAN_READY（Phase 2 终点，不进入真正开发）
+  任一步校验失败 → RETRY_ROLE / RETURN_TO_ARCHITECT / HUMAN_DECISION_REQUIRED
+  Rework ≥3 / 相同根因 2 次 → RETURN_TO_ARCHITECT 或 HUMAN_DECISION_REQUIRED
+  DONE = Requirement + Plan + Developer + Validator PASS + Reviewer APPROVED
 ```
 
 ## Artifact 持久化
@@ -94,6 +120,11 @@ NEW → REQUIREMENT_ANALYSIS → (ROUTING_DECISION)
 ├── repository-understanding.yaml  # Repository Analyst 产出（中/复杂路径）
 ├── architecture-result.yaml       # Architect 产出
 ├── implementation-plan.yaml       # Architect 最终核心产物
+├── implementation-result.yaml     # Developer 产出（Phase 3 新增）
+├── verification-result.yaml       # Validator 产出（Phase 3 新增）
+├── review-result.yaml             # Repository Reviewer 产出（Phase 3 新增）
+├── rework-001.yaml                # Rework 记录（Phase 3 新增，可多份）
+├── development-summary.yaml       # Lead 最终总结（Phase 3 新增）
 └── handoff-log.md                 # 交接日志（谁 → 谁 → 什么 Artifact）
 ```
 

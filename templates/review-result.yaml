@@ -1,0 +1,11 @@
+type: review_result
+task_id: ""
+review_status: ""   # APPROVED | CHANGES_REQUIRED | BLOCKED | HUMAN_DECISION_REQUIRED
+findings:
+  critical: []      # must fix
+  warning: []       # should fix
+  info: []          # optional fix
+recommendation: ""
+evidence: []
+reviewer_session: ""
+review_id: ""

@@ -1,21 +1,22 @@
-# templates/implementation-result.yaml — Implementation Result（Developer 回传）
 type: implementation_result
-task_id: DT-YYYYMMDD-001
-status: COMPLETED            # COMPLETED | FAILED | BLOCKED | PARTIAL
-summary: 已实现 hello() 且自测通过
-changed_files:
-  - <TARGET_DIR>/hello.py
-  - <TARGET_DIR>/test_hello.py
+task_id: ""
+attempt: ""
+status: ""          # SUCCESS | FAILED | BLOCKED | SCOPE_EXPANSION_REQUIRED
+summary: ""
+changed_files: []
+created_files: []
+deleted_files: []
 tests:
-  - name: test_hello
-    command: python3 -m pytest <TARGET_DIR>/test_hello.py -q   # 或 python3 <TARGET_DIR>/test_hello.py
-    result: pass             # pass | fail
-    output: "1 passed in 0.01s"
+  executed: []
+  passed: []
+  failed: []
 acceptance_criteria:
-  - "hello 函数存在并可调用": 满足（test_hello 调用成功）
-  - "自测通过": 满足（pytest 1 passed）
-  - "有文件变更清单 + evidence": 满足（见 changed_files / evidence）
+  passed: []
+  failed: []
+scope_check:
+  status: ""        # MATCH | MISMATCH
+  unexpected_changes: []
+git_diff_summary: ""
 known_issues: []
-evidence: >
-  git diff 摘要 + 测试命令与输出（必须可复现）
-next_recommended_stage: verify
+evidence: []
+next_recommended_stage: ""

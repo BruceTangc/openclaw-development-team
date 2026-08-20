@@ -1,0 +1,10 @@
+type: rework_instruction
+task_id: ""
+attempt: ""
+reason: ""
+findings: []
+required_changes: []
+scope:
+  modify: []
+  create: []
+acceptance_criteria: []
