@@ -1,0 +1,19 @@
+type: development_result
+task_id: ""
+status: ""          # COMPLETED | FAILED | BLOCKED | HUMAN_DECISION_REQUIRED
+summary: ""
+changed_files: []
+created_files: []
+tests:
+  executed: []
+  passed: []
+  failed: []
+validation:
+  status: ""        # PASS | FAIL
+  findings: []
+review:
+  status: ""        # APPROVED | CHANGES_REQUIRED | BLOCKED
+  findings: []
+commit: ""
+known_issues: []
+next_action: ""

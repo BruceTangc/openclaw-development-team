@@ -10,74 +10,83 @@
 |:--|:--|:--|
 | **Phase 1** | Result Closure (spawn → completion → yield → Lead) | ✅ Verified |
 | **Phase 2** | Requirement / Solution Research / Repository Analysis / Architecture | ✅ Verified |
-| **Phase 3** | Developer Execution / Validator / Reviewer Adapter / Rework Loop | ✅ Verified (Phase 3.2 Independent Audit: P0-1~P0-5 all PASS, real sub-agents, real dlt-simulator dev) |
+| **Phase 3** | Developer Execution / Validator / Reviewer Adapter / Rework Loop | ✅ Verified |
+| **Phase 3.2** | Independent Audit: P0-1~P0-5 all PASS (real sub-agents, real dlt-simulator dev) | ✅ Verified |
+| **Phase 4** | Production Integration: Main Agent → Development Team → Main Agent | ✅ Implemented |
 
 ## Quick Start
 
 ```bash
-# E2E tests (all phases)
-python3 scripts/e2e_phase3.py    # Phase 3: 8/8 tests
-python3 scripts/e2e_phase2.py    # Phase 2: 8/8 tests
-python3 scripts/e2e_scenarios.py # Phase 2 routing: 5/5 tests
+# E2E tests
+python3 scripts/e2e_phase3.py    # Phase 3 schema tests
+python3 scripts/e2e_phase2.py    # Phase 2 artifact chain tests
+python3 scripts/e2e_scenarios.py # Phase 2 routing tests
 ```
 
-## Complete Flow
+## Complete Flow (Phase 4 Production)
 
 ```
-User Request
-  → Development Lead
-    → Requirement Analyst    → requirement_result
-    → Solution Researcher    → solution_discovery_result
-    → Repository Analyst     → repository_understanding
-    → Architect              → architecture_result + implementation_plan
-  → Developer                → implementation_result
-  → Validator                → verification_result
-  → Repository Reviewer      → review_result
-    ├─ APPROVED → DONE
-    └─ CHANGES_REQUIRED → Rework → Developer → Validator → Reviewer
+User: "给 dlt-simulator 增加 XXX 功能"
+  → Main Agent (Task Router)
+    → Development Team
+      → Development Lead (唯一 Orchestrator)
+        → Requirement Analyst
+        → Solution Researcher
+        → Repository Analyst
+        → Architect
+        → Developer
+        → Validator
+        → Repository Reviewer
+      → development_result
+  → Main Agent
+  → User
 ```
 
 ## Directory Structure
 
 ```
 openclaw-development-team/
-├── README.md                     # This file
-├── AGENTS.md                     # Development Lead role + decision tree
-├── PROTOCOL.md                   # Core protocols (Result Closure / Routing / Rework)
-├── IMPLEMENTATION_SPEC.md        # Implementation specification
+├── README.md
+├── AGENTS.md                     # Development Lead (Phase 4: Production Integration)
+├── PROTOCOL.md                   # Core protocols (§1-16, Phase 4 = §16)
+├── IMPLEMENTATION_SPEC.md
 ├── agents/
-│   ├── developer/AGENTS.md       # Developer (execution layer)
-│   ├── validator/AGENTS.md       # Validator (independent verification)
-│   ├── architect/AGENTS.md       # Architect
+│   ├── developer/AGENTS.md
+│   ├── validator/AGENTS.md
+│   ├── architect/AGENTS.md
 │   ├── requirement-analyst/AGENTS.md
 │   ├── solution-researcher/AGENTS.md
 │   └── repository-analyst/AGENTS.md
 ├── protocols/
-│   ├── task.md                   # Development Task Contract
-│   ├── delegation.md             # Delegation Contract
-│   ├── result-closure.md         # Result Closure (P0)
-│   ├── developer-execution.md    # Developer Execution Contract
-│   ├── verification.md           # Validator (full)
-│   ├── review-adapter.md         # Repository Reviewer Adapter
-│   ├── rework-loop.md            # Rework Loop Protocol
-│   ├── artifact-persistence.md   # Artifact persistence
-│   ├── role-handoff.md           # Role Handoff
-│   ├── routing.md                # Dynamic routing
-│   └── reuse-decision.md         # Reuse decision
-├── templates/                    # YAML templates for all artifacts
+│   ├── main-agent-integration.md # Phase 4: Task Router + Development Result
+│   ├── developer-execution.md
+│   ├── review-adapter.md
+│   ├── rework-loop.md
+│   ├── verification.md
+│   ├── task.md / delegation.md / result-closure.md
+│   ├── artifact-persistence.md / role-handoff.md / routing.md / reuse-decision.md
+├── templates/
+│   ├── development-result.yaml   # Phase 4: 标准输出
+│   ├── (all Phase 1-3 templates)
 ├── scripts/                      # E2E test scripts
-└── .tasks/<task_id>/             # Persisted artifacts per task
+└── .tasks/<task_id>/             # Persisted artifacts
 ```
 
 ## Definition of Done
 
-A task is DONE only when **all** of:
+Task = Requirement 满足 + Implementation Plan 完成 + Developer 完成 + Validator PASS + Repository Reviewer APPROVED → status = DONE
 
-1. Requirement met
-2. Implementation Plan completed
-3. Developer completed
-4. Validator PASS
-5. Repository Reviewer APPROVED
+## Phase 4: Production Integration
+
+Main Agent 通过 Task Router 判断是否调用 Development Team：
+- 开发任务 → Development Team
+- 研究任务 → Research
+- 管理任务 → 对应 Skill
+- 闲聊 → 直接回复
+
+Development Team 最终只返回一个 `development_result`（含 status/summary/changed_files/tests/validation/review/commit/known_issues/next_action）。
+
+Human Decision 只在必要时打扰用户。Failure Recovery 由 Lead 自主处理。
 
 ## Constraints
 

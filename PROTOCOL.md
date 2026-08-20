@@ -1,8 +1,8 @@
 # PROTOCOL.md — 开发团队协议
 
-OpenClaw Development Team v1.0（Phase 1 + Phase 2 + Phase 3）的核心协议规范。
+OpenClaw Development Team v1.0（Phase 1 + Phase 2 + Phase 3 + Phase 4）的核心协议规范。
 
-> Phase 1 = Result Closure（§1-5）。Phase 2 = Role Handoff + Artifact Persistence + Dynamic Routing（§6-10，Phase 2）。Phase 3 = Development Execution + Verification + Review Loop + Rework（§11-15，新增）。
+> Phase 1 = Result Closure。Phase 2 = Planning Pipeline。Phase 3 = Execution + Verification + Review Loop。Phase 4 = Production Integration（Main Agent → Development Team → Main Agent）。
 
 ---
 
@@ -218,3 +218,11 @@ Validator FAIL / Reviewer CHANGES_REQUIRED → Lead 读 findings → 判断根�
 ## 15. Definition of Done（Phase 3 新增）
 
 Task = Requirement 满足 + Implementation Plan 完成 + Developer 完成 + Validator PASS + Repository Reviewer APPROVED → status = DONE。否则不能向用户报告“开发完成”。
+
+---
+
+## 16. Production Integration（Phase 4 新增）
+
+> 详见 `protocols/main-agent-integration.md`。
+
+Main Agent 通过 Task Router 判断是否调用 Development Team。开发任务 → Development Team；其他任务 → Main Agent 自己处理。Development Team 最终只返回一个 `development_result`（含 status/summary/changed_files/tests/validation/review/commit/known_issues/next_action）。Human Decision 只在必要时打扰用户。Failure Recovery（TIMEOUT/SUBAGENT_FAILURE/VALIDATION_FAILURE/REVIEW_FAILURE/REWORK_LIMIT/ARCHITECTURE_REVISION）由 Lead 自主处理。
