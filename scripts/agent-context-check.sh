@@ -90,9 +90,14 @@ else
 fi
 
 # ─── 3. 识别 Main Agent / workspace（动态解析） ───
+# 修复：优先用传入的 --agent（install.sh 的 --main-agent），无参仅作 fallback。
+# 因为无参 `openclaw skills check` 会落到 CLI 默认 agent（本机=宝总），可能非真正主 agent。
 detect_main_workspace() {
-  # openclaw skills check --json 会输出当前 agent 的 workspaceDir / managedSkillsDir
-  openclaw skills check --json 2>/dev/null
+  if [[ -n "$TARGET_AGENT" ]]; then
+    openclaw skills check --agent "$TARGET_AGENT" --json 2>/dev/null
+  else
+    openclaw skills check --json 2>/dev/null
+  fi
 }
 SC_OUTPUT="$(detect_main_workspace)"
 WORKSPACE_DIR="$(echo "$SC_OUTPUT" | python3 -c "import sys,json;
@@ -110,6 +115,8 @@ except: print('')" 2>/dev/null)"
 
 if [[ -n "$WORKSPACE_DIR" ]]; then
   ok "Main Agent 解析成功 → agent=$( [[ -n "$CUR_AGENT" ]] && echo "$CUR_AGENT" || echo '(未命名)') workspace=$WORKSPACE_DIR"
+elif [[ -n "$TARGET_AGENT" ]]; then
+  fail "无法解析 Main Agent workspace — openclaw skills check --agent '$TARGET_AGENT' 未返回 workspaceDir"
 else
   fail "无法解析 Main Agent workspace — openclaw skills check 未返回 workspaceDir"
 fi
