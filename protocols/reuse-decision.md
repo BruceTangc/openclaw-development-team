@@ -8,6 +8,7 @@
 1. **Agent OS 是否已有相同能力？** 有 → `REUSE_EXISTING_CAPABILITY`，禁止重复实现。
 2. **现有 Skill 是否已有相同能力？** 有 → 复用/修改，禁止另起炉灶。
 3. **外部开源/GitHub/官方 SDK 是否有成熟方案？** 有 → 按 reuse_level 决策（DIRECT_REUSE / ADAPT / LEARN_AND_BUILD）。
+4. **是否涉及 OpenClaw 能力？**（Skill / Agent / Plugin / Tool / 配置 / Gateway / CLI 等）是 → **OpenClaw Documentation First**：先查 OpenClaw 官方文档（本地 `/usr/lib/node_modules/openclaw/docs/` 或线上 `https://docs.openclaw.ai`），记录 `openclaw_version` + `docs_checked`（文档主题/名称）。文档与旧经验冲突 → 以当前版本为准；环境能力与文档不一致 → 进入 `HUMAN_DECISION_REQUIRED`。
 
 ## 2. reuse_level 判定（Research 步骤产出）
 

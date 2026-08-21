@@ -52,6 +52,13 @@ final_decision: ""
 # 必须修复项（final_decision=REWORK_REQUIRED 时非空）
 required_actions: []
 
+# OpenClaw Native Compliance（涉及 OpenClaw 能力时填写，见 review-adapter.md §3.3a）
+openclaw_compliance:
+  # PASS | FINDINGS | NOT_APPLICABLE（非 OpenClaw 任务填 NOT_APPLICABLE）
+  status: ""
+  # finding 结构与 code_findings 一致：severity / file / message / required_action
+  findings: []
+
 # ── finding 结构（从 RR schemas/finding.json 迁移，去 gate 化）───────────
 # 每项 finding 形如：
 #   severity: P0 | P1 | P2     # P0=安全/破坏性 → 直接 REWORK_REQUIRED；P1=必须修复；P2=建议

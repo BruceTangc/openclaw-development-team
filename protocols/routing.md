@@ -20,6 +20,8 @@ Main Agent 收到需求后，按「实质特征」判断，不是按字面：
 - 涉及架构、多系统集成、安全、大重构、或「做什么」本身不清晰 → COMPLEX。
 
 > 宁可把「看起来复杂」降级为 FEATURE 高效处理，也不要为简单任务铺完整流水线。
+>
+> **涉及 OpenClaw 能力时**（Skill / Agent / Plugin / Tool / 配置 / Gateway / CLI 等），复杂度判断须计入「OpenClaw Documentation First」成本——先查官方文档，确认当前版本能力与限制，再做复杂度评估。环境能力与文档不一致 → `HUMAN_DECISION_REQUIRED`。
 
 ## 3. 各档位细节
 

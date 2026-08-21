@@ -19,11 +19,13 @@ Main Agent 收到用户消息后**自己判断**：
 3. 需多步骤工程实施（架构+编码+测试+Review）
 4. 需修复 bug / 重构
 5. 用户明确要求「开发/实现/写代码/修改/添加功能/修复/重构」
+6. 涉及 OpenClaw 能力开发（Skill / Agent / Plugin / Tool / 配置 / Gateway / CLI 等）——此时必须走「OpenClaw Documentation First」（见 `reuse-decision.md` §1 第 4 问）
 
 **NORMAL_TASK**（Main Agent 自己处理）——满足任一：
 1. 只读/解释/分析/搜索/调研
 2. 一次性简单脚本（不涉及仓库）
 3. 回答问题/闲聊/配置管理
+4. 提及 OpenClaw 但无真实工程实施需求（如「这个 OpenClaw 功能怎么用」= 咨询，不触发开发流程）
 
 > 用户提到 GitHub/代码 ≠ 自动进入开发流程。必须有真实工程实施需求。
 

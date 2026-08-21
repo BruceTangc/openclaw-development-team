@@ -59,6 +59,19 @@ final_decision: APPROVED | REWORK_REQUIRED
 - 可维护性
 - 不必要修改（Unrelated Changes）
 
+### 3.3a OpenClaw Native Compliance（涉及 OpenClaw 能力时强制）
+
+当任务涉及 OpenClaw 能力（Skill / Agent / Plugin / Tool / 配置 / Gateway / CLI 等）时，以下检查**强制执行**，不可跳过：
+
+- 代码使用的 OpenClaw API / 机制是否符合当前版本官方文档
+- 是否使用了已废弃 / 旧版 API
+- 是否重复实现 OpenClaw 已有能力
+- 是否与当前 runtime / tool policy 冲突
+- Implementation Plan 的 `openclaw_version` 与实际环境是否一致
+- `docs_checked` 是否覆盖了任务涉及的 OpenClaw 能力域
+
+> 非 OpenClaw 相关任务可跳过此步（标记 `openclaw_compliance.status = not_applicable`）。
+
 ### 3.4 Security
 
 - Secrets / API Keys / 凭据扫描：`bash scripts/check-secrets.sh <repo>`

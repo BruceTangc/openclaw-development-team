@@ -24,3 +24,8 @@ validation: "验证方式（Reviewer 独立验证）"
 review: "评审安排（Reviewer，Workflow 内部阶段）"
 rollback: "回滚方案"
 definition_of_done: "完成的唯一定义（可验证，V2 可观测）"
+
+# OpenClaw Native Compliance（涉及 OpenClaw 能力时填写）
+openclaw_version: ""        # 当前 OpenClaw 版本（如 2026.7.1-2）
+docs_checked: []            # 查阅的 OpenClaw 文档主题/名称（如 ["sub-agents", "skills", "tools"]）
+compatibility_status: ""    # PASS | FINDINGS | NOT_APPLICABLE（非 OpenClaw 任务填 NOT_APPLICABLE）
