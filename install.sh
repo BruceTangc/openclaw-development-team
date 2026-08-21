@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # install.sh — Development Team V1 installer
 # 幂等：重复执行安全，不覆盖用户已有文件
-# 用法：bash install.sh [--workspace <path>] [--repo <path>]
+# 用法：bash install.sh [--workspace <path>] [--repo <path>] [--skip-preflight]
+# 多 Agent 说明：Development Team 是 Main Agent / Team-level capability，默认安装到
+#   shared managed skills（~/.openclaw/skills，所有本机 agent 可见），不复制到每个
+#   Developer/Reviewer 私有 workspace。安装前自动运行 Multi-Agent Installation
+#   Context Preflight（scripts/agent-context-check.sh，只读无副作用）。
 set -euo pipefail
 
 # ─── 颜色 ───
@@ -10,17 +14,58 @@ info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
+# ─── 动态解析路径（不硬编码） ───
+# 优先环境变量，其次从 OpenClaw 运行时解析；无 openclaw 则回退标准约定并告警。
+OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
+
+# 解析当前 agent workspace（用 openclaw skills check 官方 API）
+resolve_workspace() {
+  if [[ -n "${OPENCLAW_WORKSPACE_DIR:-}" ]]; then
+    echo "$OPENCLAW_WORKSPACE_DIR"; return
+  fi
+  local out
+  out="$(openclaw skills check --json 2>/dev/null | python3 -c "import sys,json
+try:
+ d=json.load(sys.stdin); print(d.get('workspaceDir','') or '')
+except: print('')" 2>/dev/null)"
+  if [[ -n "$out" ]]; then echo "$out"; return; fi
+  echo "$OPENCLAW_HOME/workspace"  # 回退（旧默认），同时下方会告警
+}
+
+# 解析 shared managed skills 目录
+resolve_managed_skills() {
+  local out
+  out="$(openclaw skills check --json 2>/dev/null | python3 -c "import sys,json
+try:
+ d=json.load(sys.stdin); print(d.get('managedSkillsDir','') or '')
+except: print('')" 2>/dev/null)"
+  if [[ -n "$out" ]]; then echo "$out"; return; fi
+  echo "$OPENCLAW_HOME/skills"  # 回退
+}
+
+# 解析 openclaw.json 中的 Main Agent id
+resolve_main_agent() {
+  openclaw skills check --json 2>/dev/null | python3 -c "import sys,json
+try:
+ d=json.load(sys.stdin); print(d.get('agentId','') or '')
+except: print('')" 2>/dev/null
+}
+
 # ─── 参数解析 ───
-WORKSPACE="${OPENCLAW_WORKSPACE_DIR:-$HOME/.openclaw/workspace}"
+WORKSPACE=""
 REPO_DIR=""
+SKIP_PREFLIGHT=0
+WORKSPACE_EXPLICIT=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --workspace) WORKSPACE="$2"; shift 2 ;;
+    --workspace) WORKSPACE="$2"; WORKSPACE_EXPLICIT=1; shift 2 ;;
     --repo)      REPO_DIR="$2"; shift 2 ;;
+    --skip-preflight) SKIP_PREFLIGHT=1; shift ;;
     -h|--help)
-      echo "用法: bash install.sh [--workspace <path>] [--repo <path>]"
-      echo "  --workspace  OpenClaw workspace 路径 (默认: ~/.openclaw/workspace)"
-      echo "  --repo       Development Team 仓库路径 (默认: 自动 clone)"
+      echo "用法: bash install.sh [--workspace <path>] [--repo <path>] [--skip-preflight]"
+      echo "  --workspace        OpenClaw Main Agent workspace 路径 (默认: openclaw 动态解析)"
+      echo "  --repo             Development Team 仓库路径 (默认: 自动 clone)"
+      echo "  --skip-preflight   跳过 Multi-Agent Installation Context Preflight"
       exit 0 ;;
     *) error "未知参数: $1" ;;
   esac
@@ -28,10 +73,42 @@ done
 
 # ─── 预检 ───
 info "=== Development Team V1 安装 ==="
-info "Workspace: $WORKSPACE"
-
 command -v git  >/dev/null 2>&1 || error "需要 git，请先安装"
 command -v bash >/dev/null 2>&1 || error "需要 bash"
+
+# 未手动指定 workspace → 动态解析
+if [[ -z "$WORKSPACE" ]]; then
+  WORKSPACE="$(resolve_workspace)"
+  info "Main Agent workspace (openclaw 解析): $WORKSPACE"
+fi
+
+# 解析 Main Agent + managed skills 目录
+MAIN_AGENT="$(resolve_main_agent)"
+MANAGED_SKILLS="$(resolve_managed_skills)"
+SHARED_SKILL_SRC="$MANAGED_SKILLS"
+
+if [[ -n "$MAIN_AGENT" ]]; then
+  info "Main Agent: $MAIN_AGENT"
+else
+  warn "未能识别 Main Agent id（openclaw skills check 未返回 agentId）"
+fi
+
+# ─── Multi-Agent Installation Context Preflight ───
+# 只读、无副作用；验证环境能力 + discovery 原则，不执行真实安装。
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ "$SKIP_PREFLIGHT" -eq 0 ]]; then
+  if [[ -f "$SCRIPT_DIR/scripts/agent-context-check.sh" ]]; then
+    info "=== Multi-Agent Installation Context Preflight ==="
+    if [[ -n "$MAIN_AGENT" ]]; then
+      bash "$SCRIPT_DIR/scripts/agent-context-check.sh" --agent "$MAIN_AGENT" || true
+    else
+      bash "$SCRIPT_DIR/scripts/agent-context-check.sh" || true
+    fi
+    info "（Preflight 失败不会中断安装，但请阅读上方 WARN/FAIL 判断环境是否就绪）"
+  else
+    warn "未找到 agent-context-check.sh，跳过 Preflight"
+  fi
+fi
 
 # 检查 workspace 是否存在
 if [[ ! -d "$WORKSPACE" ]]; then
@@ -39,10 +116,26 @@ if [[ ! -d "$WORKSPACE" ]]; then
   mkdir -p "$WORKSPACE"
 fi
 
-# ─── 获取仓库 ───
-DT_DIR="$WORKSPACE/openclaw-development-team"
-SKILL_DIR="$WORKSPACE/skills/development-team"
+# 确定安装位置：Team-level capability → shared managed skills（所有 agent 可见）
+# 不把 Development Team Skill 重复复制到每个 Developer/Reviewer 私有 workspace。
+# 规则：用户显式指定 --workspace 时尊重之（Skill 随该 workspace）；否则默认 shared managed。
+if [[ "$WORKSPACE_EXPLICIT" -eq 1 ]]; then
+  SKILL_PARENT="$WORKSPACE/skills"
+  info "Skill 安装位置（显式 --workspace）: $WORKSPACE/skills/development-team"
+else
+  if [[ -n "$SHARED_SKILL_SRC" ]] && [[ -d "$SHARED_SKILL_SRC" ]]; then
+    SKILL_PARENT="$SHARED_SKILL_SRC"
+    info "Skill 安装位置（shared managed，所有 agent 可见）: $SHARED_SKILL_SRC/development-team"
+  else
+    SKILL_PARENT="$WORKSPACE/skills"
+    info "Skill 安装位置（Main Agent workspace）: $WORKSPACE/skills/development-team"
+  fi
+fi
 
+DT_DIR="$WORKSPACE/openclaw-development-team"
+SKILL_DIR="$SKILL_PARENT/development-team"
+
+# ─── 获取仓库 ───
 if [[ -n "$REPO_DIR" ]]; then
   # 用本地仓库（复制）
   if [[ ! -d "$REPO_DIR" ]]; then
@@ -148,11 +241,11 @@ else
 fi
 
 # 7. Skill 可被 OpenClaw 发现
-if [[ -d "$WORKSPACE/skills" ]]; then
-  SKILL_COUNT=$(find "$WORKSPACE/skills" -name "SKILL.md" 2>/dev/null | wc -l)
-  info "✅ skills/ 目录存在，共 $SKILL_COUNT 个 skill"
+if [[ -d "$SKILL_PARENT" ]]; then
+  SKILL_COUNT=$(find "$SKILL_PARENT" -name "SKILL.md" 2>/dev/null | wc -l)
+  info "✅ Skills 目录存在 ($SKILL_PARENT)，共 $SKILL_COUNT 个 skill"
 else
-  warn "⚠️  skills/ 目录不存在"
+  warn "⚠️  Skills 目录不存在 ($SKILL_PARENT)"
 fi
 
 # 7b. 项目交付就绪检查脚本存在且可执行

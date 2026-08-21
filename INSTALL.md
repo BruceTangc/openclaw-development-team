@@ -44,18 +44,25 @@ bash install.sh
 ```
 
 安装器会自动：
-1. 将文件复制到 `~/.openclaw/workspace/openclaw-development-team/`
-2. 安装 Skill 到 `~/.openclaw/workspace/skills/development-team/`
-3. 确保脚本可执行
-4. 运行 smoke test 验证安装
+1. 运行 **Multi-Agent Installation Context Preflight**（只读、无副作用，验证 OpenClaw 环境与多 Agent discovery 原则）
+2. **动态解析** Main Agent workspace 与 shared managed skills 目录（用 `openclaw skills check` 官方 API，不硬编码路径）
+3. 将仓库主体复制到 Main Agent workspace 的 `openclaw-development-team/`
+4. 将 Skill 安装到 **shared managed skills**（`~/.openclaw/skills/development-team/`，所有本机 agent 可见）
+5. 确保脚本可执行
+6. 运行 smoke test 验证安装
+
+> **多 Agent 原则**：Development Team 是 **Main Agent / Team-level capability**，默认安装到 shared managed
+> skills（所有 agent 可见），**不复制到每个 Developer/Reviewer 的私有 workspace**。
 
 ### 方式二：指定 workspace
 
-如果你的 OpenClaw workspace 不在默认位置：
+如果你的 OpenClaw main agent workspace 不在默认位置（或要显式指定安装目标）：
 
 ```bash
 bash install.sh --workspace /path/to/your/workspace
 ```
+
+> 显式指定 `--workspace` 时，Skill 将随该 workspace 安装到 `<workspace>/skills/`。
 
 ### 方式三：从本地仓库安装
 
@@ -63,6 +70,12 @@ bash install.sh --workspace /path/to/your/workspace
 
 ```bash
 bash install.sh --repo /path/to/openclaw-development-team
+```
+
+### 跳过 Preflight
+
+```bash
+bash install.sh --skip-preflight
 ```
 
 ### 幂等性

@@ -138,3 +138,25 @@ Developer 只给 `IMPLEMENTATION COMPLETE`；只有全部验证 + Reviewer Stran
 - **禁止伪造 PASS**：无法实际运行的测试/验证必须标 `NOT RUN` 并说明原因。伪造 PASS 是严重违规。
 - **禁止修改用户项目的 `AGENTS.md` / `SOUL.md` / `MEMORY.md`**。
 - **禁止只写文档不落地**：规则必须进入 Developer / Reviewer 强制工作流与 `scripts/project-readiness-check.sh`。
+
+---
+
+## 10. 多 Agent 环境（OpenClaw Multi-Agent）
+
+Development Team 默认属于 **Main Agent / Team-level capability**：
+
+- **不默认分别复制安装到 Developer / Reviewer Agent**。Developer 是 Workflow 内部阶段（Main Agent 执行），Reviewer 是主 Agent 的质量闸门，都不需要独立持有 Development Team Skill。
+- **Skill 安装位置由当前 OpenClaw 实际环境动态确定**（用 `openclaw skills check` 官方 API），**严禁硬编码** `~/.openclaw/workspace/skills` 等固定路径。
+
+安装前必须运行 **多 Agent Installation Context Preflight**（`scripts/agent-context-check.sh`，只读、无副作用、不执行真实安装）：
+
+1. 检测 OpenClaw 是否存在及版本
+2. 识别当前 Main Agent / workspace
+3. 确定 Development Team Skill 实际安装位置（shared managed 或 Main Agent workspace）
+4. 验证 Main Agent 能否发现 Development Team Skill
+5. 验证 Skill discovery **不依赖 Developer/Reviewer 的私有 workspace**
+6. 验证调用链 Main Agent → Development Team → Developer → Reviewer
+7. **不默认把 Skill 重复安装到 Developer / Reviewer**
+8. **无法验证某 Agent discovery 行为 → 标记 `NOT RUN`，禁止假设 PASS**
+
+真正的多 Agent 安装/运行验证由 **Reviewer Stranger User Audit / E2E Test** 完成，Preflight 不替代真实安装验证。
