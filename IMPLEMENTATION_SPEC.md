@@ -26,12 +26,12 @@ OpenClaw Development Team v1.0（Phase 1 + Phase 2）的实现规范。
 - **委派**：`sessions_spawn(task=..., taskName=..., label=..., cwd=..., model=...)`
   - 返回 `{ status: "accepted", runId, childSessionKey }`，非阻塞。
   - `context` 默认 `isolated`（本任务独立，无需 fork 上下文）。
-- **等待**：`sessions_yield` —— 结束当前 turn，让 completion 事件作为下一条模型消息到达。
+- **等待**：push-based auto-announce —— spawn 后结束当前 turn，completion 事件作为下一条 user message 自动到达（sessions_spawn 返回的 note 明确此机制，无需显式 yield 原语）。
 - **消费**：completion/announce 回到 requester session，含 `Status` + 子代理 assistant 文本（含 stats line：sessionKey/sessionId/transcript path）。
 - **诊断（仅异常）**：`subagents` / `sessions_history` / `/subagents list|log|info`。
 - **追加（可选，非回传机制）**：`sessions_send`（timeoutSeconds: 0 = fire-and-forget）。
 
-> 注意：`sessions_yield` 必须在 session 有效工具列表里才可用。若 profile 未暴露，不要造 polling loop，直接回报主会话。
+> 注意：当前 API **没有** `sessions_yield` 工具；等待靠 push-based auto-announce。不要造 polling loop。
 
 ---
 
@@ -85,7 +85,7 @@ task_id / status(PASS|FAIL|BLOCKED) / tests / acceptance_criteria / findings / e
 1. [ ] Lead 建 Development Task + Delegation Contract
 2. [ ] `sessions_spawn` 委派给 Developer sub-agent
 3. [ ] Developer 在极小测试项目加一个 `hello` 函数，自测通过，回传 Implementation Result
-4. [ ] completion 回到 Lead（`sessions_yield` 消费）
+4. [ ] completion 回到 Lead（push-based auto-announce 消费）
 5. [ ] Lead 解析 Implementation Result
 6. [ ] Minimal Validator 校验 → `status=PASS`
 7. [ ] 记录证据：OpenClaw version / sessions_spawn 参数 / requester session / child session / completion delivery route / 实际结果
@@ -102,9 +102,9 @@ task_id / status(PASS|FAIL|BLOCKED) / tests / acceptance_criteria / findings / e
 
 ## 7. 当前已知限制
 
-- 本项目为 **subagent 运行时**（depth 1 leaf），工具集不含 `sessions_spawn` / `sessions_yield` / `subagents` / `sessions_history`。
-  - 因此真正 spawn/yield 的 E2E 必须由 **Main Agent 会话**（本机 `main` 角色，已授予 `sessions_spawn`/`sessions_send`/`subagents`）执行。
-  - `sessions_yield` 当前**不在** `tools.allow` 白名单中（见配置），需要确认主会话是否可用；不可用则记录并回报，不造 polling loop。
+- 本项目为 **subagent 运行时**（depth 1 leaf），工具集不含 `sessions_spawn` / `subagents` / `sessions_history`。
+  - 因此真正 spawn 的 E2E 必须由 **Main Agent 会话**（本机 `main` 角色，已授予 `sessions_spawn`/`sessions_send`/`subagents`）执行。
+  - 等待机制是 push-based auto-announce（无 `sessions_yield` 工具），不可用 polling loop。
 - 详见 `README.md` 与最终施工报告。
 
 ---

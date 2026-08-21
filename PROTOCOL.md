@@ -18,7 +18,7 @@ Development Lead（= Main Agent 的开发编排角色）
   → Developer sub-agent 执行（独立 session: agent:<id>:subagent:<uuid>）
   → 完成时 OpenClaw 生成 completion / announce（agent turn，带幂等 key）
   → 回到 requester session（Lead）
-  → sessions_yield 让 completion 作为下一模型可见消息到达
+  → completion 自动作为下一条 user message 到达（push-based，无需显式 yield）
   → Lead 消费结果 → Minimal Validator 校验
 ```
 
@@ -27,7 +27,7 @@ Development Lead（= Main Agent 的开发编排角色）
 | 原语 | 作用 |
 |:--|:--|
 | `sessions_spawn` | 非阻塞委派，立即返回 `{ status:"accepted", runId, childSessionKey }` |
-| `sessions_yield` | 等待原语：结束当前 turn，等 completion 事件作为下一条消息 |
+| push-based auto-announce | 等待机制：spawn 后结束 turn，completion 事件自动作为下一条 user message 到达（无需显式 yield 原语） |
 | completion/announce | push 式回传：含 `Status`（completed/failed/timed out/unknown）+ 子代理最新 assistant 文本 |
 
 ### 1.3 禁止项

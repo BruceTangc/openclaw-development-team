@@ -1,30 +1,29 @@
-# protocols/main-agent-integration.md — Phase 4.1: Production Integration
+# protocols/main-agent-integration.md — Production Integration
 
-> Main Agent 和 Development Lead 是两个不同角色。Main Agent 是用户接口 + 任务委派者，Development Lead 是开发项目经理。
+> **角色定义（冻结架构）**：Development Lead 是 **Main Agent 在 DEVELOPMENT_TASK 下承担的逻辑编排角色**，
+> 不是独立 sub-agent，不是独立 Runtime。Main Agent 与 Development Lead 的区别是「职责/上下文边界」，不是两个独立 Agent。
 
-## 角色分离
+## 角色关系（Lead = Main Agent 的逻辑编排角色）
 
-### Main Agent（你 = OpenClaw 主会话）
+### Main Agent（你 = OpenClaw Runtime Agent）
 
 **职责**：
 1. 接收用户消息
 2. **Development Task Classification**（判断是否为开发任务）
-3. 如果是 DEVELOPMENT_TASK → 创建 Task Contract → 委派 Development Lead
-4. 等待 development_result
-5. 向用户汇报
+3. 如果是 DEVELOPMENT_TASK → 创建 Task Contract → 进入 Development Lead 逻辑角色
+4. 以 Development Lead 身份直接 spawn 各业务角色（不 spawn 独立 Lead）
+5. 收口 development_result → 向用户汇报
 
-**你不关心** Development Team 内部发生了什么。你只关心 development_result。
+### Development Lead（= Main Agent 的开发编排角色）
 
-### Development Lead（被委派的子代理）
-
-**职责**：
-1. 接收 Task Contract
-2. 判断复杂度 → 动态委派 Role
+**职责**（Main Agent 在处理 DEVELOPMENT_TASK 时承担）：
+1. 创建 Task Contract 后进入编排
+2. 判断复杂度 → 动态委派 Role（直接 spawn Requirement/Researcher/Repository/Architect/Developer/Validator/Reviewer）
 3. 校验每一步 Result
 4. 处理失败 / rework / architecture revision
-5. 最终返回 development_result
+5. 最终收口 development_result 并交给用户
 
-**你不直接面对用户。** 你的 result_owner = Main Agent。
+**你直接面对用户。** 结果经 announce 链收口回 Main Agent 当前 development task context。
 
 ## Development Task Classification Gate
 
@@ -120,9 +119,9 @@ USER
 │  1. 接收用户消息         │
 │  2. Task Classification │  ← DEVELOPMENT_TASK or NORMAL_TASK?
 │  3. 创建 Task Contract  │
-│  4. 委派 Development Lead│
-│  5. 等待 development_result│
-│  6. 向用户汇报           │
+│  4. 进入 Development Lead 逻辑角色（不 spawn 独立 Lead）│
+│  5. 直接 spawn 各业务角色│
+│  6. 收口 development_result → 向用户汇报│
 └──────────┬──────────────┘
            │
      ┌─────┴─────┐
@@ -130,10 +129,10 @@ USER
 NORMAL_TASK   DEVELOPMENT_TASK
      │           │
      ▼           ▼
-Main Agent    ┌─────────────────────────┐
-自行处理       │   Development Lead      │
-               │   (内部 Orchestrator)   │
-               └──────────┬──────────────┘
+Main Agent    ┌──────────────────────────────┐
+自行处理       │ Development Lead（= Main Agent│
+               │  的逻辑编排角色，非独立 Agent）│
+               └──────────┬───────────────────┘
                           │
         ┌─────────────────┼─────────────────┐
         ▼                 ▼                 ▼

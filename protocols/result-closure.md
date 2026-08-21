@@ -7,12 +7,12 @@
 
 ```
 Lead → sessions_spawn → Developer 执行 → completion/announce（agent turn，幂等 key）
-  → requester session → sessions_yield → Lead 消费 → Validator 校验
+  → requester session → 自动作为 user message 到达 → Lead 消费 → Validator 校验
 ```
 
 ## 2. 等待原语
 
-- **用 `sessions_yield`**：结束当前 turn，等 completion 事件作为下一条消息到达。
+- **用 push-based auto-announce**：spawn 后结束当前 turn，等 completion 事件作为下一条 user message 自动到达（sessions_spawn 返回的 note 明确此机制）。
 - **禁止 polling loop**：不用 sleep / sessions_history / sessions_list / subagents list 轮询等完成。
 
 ## 3. 结果语义
