@@ -30,10 +30,12 @@ Main Agent 收到需求后，按「实质特征」判断，不是按字面：
 
 ### 3.2 FEATURE
 - Understand + Repository Analysis + Plan 都在 Main Agent 上下文内完成。
-- spawn Developer 实施 → 测试 → spawn Reviewer 审查 → Rework → Commit → Version/Changelog。
+- 默认 feature branch 或 worktree（见 `git-workflow.md`）。
+- spawn Developer 实施 → 测试 → Reviewer 审查 → Rework → Commit → Version/Changelog。
 
 ### 3.3 COMPLEX
 - **先检查 IDEAL**：缺 IDEAL → HUMAN_DECISION_REQUIRED。
+- 默认 feature branch 或 worktree（见 `git-workflow.md`）。
 - Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → Version → Release。
 
 ## 4. Research 按需触发
@@ -42,8 +44,25 @@ Main Agent 收到需求后，按「实质特征」判断，不是按字面：
 
 ## 5. Reviewer 按风险决定
 
-- SIMPLE：Reviewer 按需（低风险可跳过，或 Main Agent 快速自查）。
-- FEATURE / COMPLEX：Reviewer 必须执行。
+- **SIMPLE**：默认不需要完整 Reviewer（低风险可跳过，或 Main Agent 快速自查）。
+- **FEATURE / COMPLEX**：Reviewer 必须执行。
+
+### 5.1 SIMPLE 强制 Review 触发条件（命中任一 → 必须进入完整 Reviewer）
+
+SIMPLE 任务若满足以下**任一**情况，不得跳过 Reviewer：
+
+- 修改核心业务逻辑
+- 修改安全、权限、认证相关内容
+- 修改公共 API / 接口契约
+- 修改数据结构 / 数据格式 / 持久化结构
+- 修改超过一个核心代码文件
+- 修改可能影响现有功能的公共行为
+- Main Agent 无法充分确认实现正确性
+- 用户明确要求 Review / 检查 / 审查
+- Developer 自测失败后经过 REWORK
+- 涉及 Version / CHANGELOG / Release
+
+> 只有「真正简单、低风险、局部修改」且不命中以上任何一条时，SIMPLE 才可走 `Understand → Implement → Test(必要) → Commit`，跳过完整 Reviewer。
 
 ## 6. 分支语义（Workflow 内部）
 

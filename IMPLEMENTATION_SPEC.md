@@ -76,7 +76,8 @@ Development Team **不允许擅自改变 IDEAL**。缺失/冲突/歧义/无法�
 
 > 详见 `protocols/git-workflow.md` / `versioning.md` / `changelog.md` / `release.md` / `repository-cleanliness.md`。
 
-- Git 保护优先：开发前记录 branch/commit/status/已有修改；优先 feature branch 或 worktree；禁止 force push/reset/覆盖未提交文件/改历史（除非 Human Decision）。
+- Git 保护优先：开发前记录 branch/commit/status/已有修改；SIMPLE 允许当前分支直改，FEATURE/COMPLEX 默认 feature branch 或 worktree（优先 worktree）；禁止 force push/reset/覆盖未提交文件/改历史（除非 Human Decision）。
+- Commit ≠ Push ≠ Release：Commit 是历史节点；Push 是正常开发闭环；Release 是正式发布。
 - Commit 与 Version 分离。
 - SemVer + CHANGELOG + 保守 Release Gate。
 - 收尾 Repository Cleanliness 检查。
@@ -132,5 +133,5 @@ known_issues: []
 - ❌ 修改 Agent OS Core
 - ❌ 擅自改变 IDEAL
 - ❌ 破坏用户已有修改
-- ❌ 自动 push（push 走 Release Gate，需用户确认）
+- ❌ 自动 push（push 由 Main Agent 执行，Push ≠ Release）
 - ❌ 为通过 E2E 伪造测试结果

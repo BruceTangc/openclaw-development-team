@@ -35,12 +35,16 @@ code_findings: []            # 代码/架构 finding
 security_findings: []        # 安全 finding
 repository_findings: []      # 仓库整洁/一致性 finding
 
-# Release Gate 四前置条件（全部 true 才可 Release，见 protocols/release.md）
-release_gate:
+# Reviewer 审查结论（review_gate）：表示「当前变更是否具备进入后续 Git/Push/Release 流程」。
+# ⚠️ 这不是真正的 GitHub Release Gate（后者见 protocols/release.md，含 version/CHANGELOG 前置条件）。
+review_gate:
   tests_pass: false
   independent_verification_pass: false
   review_approved: false
   repository_clean: false
+  # 仅标记状态（true|false|not_applicable），不代表可直接 Release；真正 Release Gate 见 release.md
+  version_ready: not_applicable
+  changelog_ready: not_applicable
 
 # APPROVED | REWORK_REQUIRED
 final_decision: ""

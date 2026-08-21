@@ -102,7 +102,7 @@ final_decision: APPROVED | REWORK_REQUIRED
 | `code_findings` | 代码/架构 finding（severity / file / message / required_action） |
 | `security_findings` | 安全 finding |
 | `repository_findings` | 仓库整洁/一致性 finding |
-| `release_gate` | Release Gate 四前置条件（tests_pass / independent_verification_pass / review_approved / repository_clean） |
+| `review_gate` | Reviewer 审查结论：当前变更是否具备进入后续 Git/Push/Release 流程（tests_pass / independent_verification_pass / review_approved / repository_clean / version_ready / changelog_ready）。⚠️ 不是真正的 GitHub Release Gate（见 `release.md`） |
 | `final_decision` | APPROVED / REWORK_REQUIRED |
 | `required_actions` | 必须修复项（REWORK_REQUIRED 时非空） |
 

@@ -39,11 +39,22 @@ Main Agent 收到需求后，先判断复杂度，选对路径。**简单任务�
 
 | 档位 | 特征 | 路径 | spawn 次数 |
 |:--|:--|:--|:--|
-| **SIMPLE** | typo / 单文件小改 / 文档 / 简单配置 / 明确小 bug | Understand → Implement → Test(必要) → Review(按需) → Commit | 0~1（可能不 spawn，直接做或单个 Developer） |
+| **SIMPLE** | typo / 单文件小改 / 文档 / 简单配置 / 明确小 bug | Understand → Implement → Test(必要) → Review(按需，见触发条件) → Commit | 0~1（可能不 spawn，直接做或单个 Developer） |
 | **FEATURE** | 多文件 / 新功能 / API 集成 / 数据处理 | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Rework → Commit → Version/Changelog | 1~2（Developer + Reviewer） |
 | **COMPLEX** | 新架构 / 多系统 / 安全 / 大重构 / 产品方向不清 | 先检查 IDEAL → 缺则 HUMAN_DECISION_REQUIRED → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → Version → Release | 1~2（Developer + Reviewer）+ 可能 Research |
 
 > 复杂度是 Main Agent 的判断，不是铁律。宁可把「看起来复杂」降级为 FEATURE 高效处理，也不要为简单任务铺完整流水线。
+
+### 2.1 SIMPLE 的 Reviewer 触发条件
+
+SIMPLE **默认不需要完整 Reviewer**，但命中以下**任一**必须进入 Reviewer（见 `routing.md`）：
+
+- 修改核心业务逻辑 / 安全权限认证 / 公共 API 契约 / 数据结构 / 持久化结构
+- 修改超过一个核心代码文件 / 可能影响现有公共行为
+- Main Agent 无法充分确认实现正确性
+- 用户明确要求 Review / 检查 / 审查
+- Developer 自测失败后经过 REWORK
+- 涉及 Version / CHANGELOG / Release
 
 ---
 
@@ -127,7 +138,7 @@ D — Dependencies? 不。IDEAL = Objective / Scope / Requirements / Architectur
 - 只负责代码实施，不擅自重新设计产品。
 - 遵守：Implementation Plan + Acceptance Criteria + Repository Constraints。
 - 完成后**必须执行合理测试**；Test FAIL → 修复 → 再测，允许有限次数自动修复；超限 → FAILED → Main Agent。
-- 禁止自动 push（push 由 Main Agent 走 Release Gate）。
+- 禁止自动 push（push 由 Main Agent 执行，见 `git-workflow.md`；Push ≠ Release）。
 
 ---
 
@@ -166,7 +177,8 @@ Reviewer
 
 > 见 `protocols/git-workflow.md` / `versioning.md` / `changelog.md` / `release.md` / `repository-cleanliness.md`。
 
-- **Git 保护优先**：开发前记录 current branch / commit / working tree status / 已有未提交修改；优先 feature branch 或 worktree；禁止 force push / reset 用户修改 / 覆盖未提交文件 / 改历史（除非 Human Decision）。
+- **Git 保护优先**：开发前记录 current branch / commit / working tree status / 已有未提交修改；SIMPLE 允许当前分支直改，FEATURE/COMPLEX 默认 feature branch 或 worktree（优先 worktree）；禁止 force push / reset 用户修改 / 覆盖未提交文件 / 改历史（除非 Human Decision）。
+- **Commit ≠ Push ≠ Release**：Commit 是历史节点；Push 是正常开发闭环（Review APPROVED + Git 保护通过即可 push）；GitHub Release 才是正式发布（需满足 release Gate，项目要求人工确认时请求用户）。
 - **Commit 与 Version 分离**：Commit 是历史，Version 是产品状态，不能每个 commit 都加版本。
 - SemVer（MAJOR.MINOR.PATCH）+ CHANGELOG + 保守的 GitHub Release Gate。
 - 收尾必须 `Repository Cleanliness` 检查：git status 干净、无临时文件 / debug / secret / 测试垃圾。
@@ -241,5 +253,5 @@ known_issues: []
 - ❌ 修改 Agent OS Core
 - ❌ 擅自改变 IDEAL
 - ❌ 破坏用户已有修改
-- ❌ 自动 push（push 走 Release Gate，需用户确认）
+- ❌ 自动 push（push 由 Main Agent 执行，Push ≠ Release，见 `release.md`）
 - ❌ 为通过 E2E 伪造测试结果

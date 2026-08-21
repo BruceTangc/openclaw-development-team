@@ -24,9 +24,12 @@
 
 | 档位 | 流程 | 协议 |
 |:--|:--|:--|
-| SIMPLE | Understand → Implement → Test → Review(按需) → Commit | `routing.md` |
+| SIMPLE | Understand → Implement → Test → Review(按需，见 routing.md 触发条件) → Commit | `routing.md` |
 | FEATURE | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Rework → Commit → Version/Changelog | `routing.md` |
 | COMPLEX | 检查 IDEAL → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → Version → Release | `routing.md` + `ideal-contract.md` |
+
+> FEATURE / COMPLEX 默认 feature branch 或 worktree（优先 worktree），见 `git-workflow.md`。
+> Commit ≠ Push ≠ Release：Push 是正常开发闭环，Release 才是正式发布（见 `release.md`）。
 
 ---
 

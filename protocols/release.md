@@ -29,10 +29,17 @@ main 分支
 - 项目没有 Release 策略 → **先建立最小策略**，再 Release。
 - Release 是可逆性低的操作，涉及对外发布 → 走 Human Decision / 用户确认。
 
-## 4. push 与 Release 的关系
+## 4. Commit ≠ Push ≠ Release（三者解耦）
 
-- Developer 禁止 push。
-- push 由 Main Agent 走 Release Gate，**需用户确认**（涉及对外操作）。
+三个动作是不同层级，不可混为一谈：
+
+| 动作 | 语义 | 触发条件 |
+|:--|:--|:--|
+| **Commit** | 开发历史节点 | Reviewer APPROVED 后允许创建 |
+| **Push** | 把已完成 commit 推到 GitHub，正常开发闭环的一部分 | Review APPROVED + Git 保护通过 + 无未授权修改被包含 → Main Agent 正常 push |
+| **GitHub Release** | 正式产品版本发布 | 见 §1 前置条件全部满足，且项目要求人工确认时先请求用户确认 |
+
+> **Push 不等于正式发布。** 不要每次 push 都让用户确认，也不要把 push 和 Release 当成同一个动作。
 
 ## 5. 禁止项
 

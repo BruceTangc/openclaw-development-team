@@ -46,7 +46,10 @@ Reviewer（独立质量闸门）
 Git / Version / Changelog / GitHub Release
 ```
 
-**只有两个独立执行体**：Developer（DeepSeek 编码）+ Reviewer（独立审查）。
+**只有一个独立执行体（Developer）+ 一个 Workflow 阶段（Reviewer）**：
+
+- **Developer**：DeepSeek 编码，唯一 sub-agent。
+- **Reviewer**：独立质量闸门，但它是 Development Workflow 内部阶段（Main Agent 自己执行，不 spawn）。
 
 Requirement / Research / Repository Analysis / Architect / Validator 不再是独立角色，全部收敛为 Development Workflow 内部步骤或能力。
 

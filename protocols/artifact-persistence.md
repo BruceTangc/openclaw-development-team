@@ -44,7 +44,7 @@
 
 - 只持久化工程 Artifact（YAML/markdown 交接物），不持久化运行时状态/日志/临时文件。
 - 不做数据库（不引入 SQLite/对象存储/消息队列）。
-- `.tasks/` 纳入版本控制（具体 commit/push 走 Release Gate）。
+- `.tasks/` 纳入版本控制（commit/push 由 Main Agent 按 `git-workflow.md` 执行，Push ≠ Release）。
 
 ## 6. 安全
 
