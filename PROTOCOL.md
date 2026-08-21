@@ -13,7 +13,7 @@ OpenClaw Development Team v1.0（Phase 1 + Phase 2 + Phase 3 + Phase 4）的核�
 ### 1.1 首选路径（OpenClaw 原生 announce 链）
 
 ```
-Development Lead (Main Agent)
+Development Lead（= Main Agent 的开发编排角色）
   → sessions_spawn (task + taskName)
   → Developer sub-agent 执行（独立 session: agent:<id>:subagent:<uuid>）
   → 完成时 OpenClaw 生成 completion / announce（agent turn，带幂等 key）

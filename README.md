@@ -29,7 +29,7 @@ python3 scripts/e2e_scenarios.py # Phase 2 routing tests
 User: "给 dlt-simulator 增加 XXX 功能"
   → Main Agent (Task Router)
     → Development Team
-      → Development Lead (唯一 Orchestrator)
+      → Development Lead（= Main Agent 的开发编排角色）
         → Requirement Analyst
         → Solution Researcher
         → Repository Analyst
@@ -47,7 +47,7 @@ User: "给 dlt-simulator 增加 XXX 功能"
 ```
 openclaw-development-team/
 ├── README.md
-├── AGENTS.md                     # Development Lead (Phase 4: Production Integration)
+├── AGENTS.md                     # Development Lead（= Main Agent 的开发编排角色）
 ├── PROTOCOL.md                   # Core protocols (§1-16, Phase 4 = §16)
 ├── IMPLEMENTATION_SPEC.md
 ├── agents/
