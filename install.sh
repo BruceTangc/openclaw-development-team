@@ -61,11 +61,43 @@ resolve_managed_skills() {
   return 1
 }
 
-# 解析 openclaw.json 中的 Main Agent id
+# 解析 openclaw.json 中的 Main Agent id（按指定 agent 查询；无参只作 fallback）
+# 修复：无参 `openclaw skills check` 会落到 CLI default agent（如本机=宝总），
+#       可能并非真正 Main Agent。因此优先用户显式 --main-agent；
+#       否则用显式 --workspace 推断的 agent；最后才 fallback 到无参 API。
 resolve_main_agent() {
+  # 1) 用户显式指定
+  if [[ -n "${MAIN_AGENT_EXPLICIT:-}" ]]; then
+    echo "$MAIN_AGENT_EXPLICIT"; AGENT_RESOLVED=0; return 0
+  fi
+  # 2) 若用户显式给了 workspace，尝试从该 agent 推断（用带 --agent 查询反推 workspace 匹配）
+  if [[ "$WORKSPACE_EXPLICIT" -eq 1 && -n "${OPENCLAW_HOME:-}" ]]; then
+    local cfg="$OPENCLAW_HOME/openclaw.json"
+    if [[ -f "$cfg" ]]; then
+      local ws="$(cd "$WORKSPACE" && pwd 2>/dev/null)"
+      local match="$(python3 -c "
+import json,os,re
+p='$cfg'
+try:
+    d=json.load(open(p))
+    for a in d.get('agents',{}).get('list',[]):
+        w=a.get('workspace','')
+        w=os.path.expanduser(w)
+        if os.path.realpath(w)==os.path.realpath('$WORKSPACE'):
+            print(a.get('id','')); break
+except Exception: pass
+" 2>/dev/null)"
+      if [[ -n "$match" ]]; then
+        echo "$match"; AGENT_RESOLVED=0; return 0
+      fi
+    fi
+  fi
+  # 3) fallback：无参 API（可能落到 CLI 默认 agent，标 LEGACY FALLBACK 提醒）
   local out="$(openclaw_field agentId)"
   if [[ -n "$out" ]]; then
-    echo "$out"; AGENT_RESOLVED=0; return 0
+    AGENT_RESOLVED=1
+    echo "  [LEGACY FALLBACK] 未指定 Main Agent，openclaw 默认解析为 '$out'（可能是 CLI 默认 agent 而非主 agent，请用 --main-agent 显式指定）" >&2
+    echo "$out"; return 0
   fi
   AGENT_RESOLVED=1
   echo "  [LEGACY FALLBACK] openclaw 无法解析 agentId" >&2
@@ -78,14 +110,20 @@ WORKSPACE=""
 REPO_DIR=""
 SKIP_PREFLIGHT=0
 WORKSPACE_EXPLICIT=0
+MAIN_AGENT_EXPLICIT=""
+SKILL_MODE=""   # shared | agent
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --workspace) WORKSPACE="$2"; WORKSPACE_EXPLICIT=1; shift 2 ;;
+    --main-agent) MAIN_AGENT_EXPLICIT="$2"; shift 2 ;;
+    --skill-location) SKILL_MODE="$2"; shift 2 ;;
     --repo)      REPO_DIR="$2"; shift 2 ;;
     --skip-preflight) SKIP_PREFLIGHT=1; shift ;;
     -h|--help)
-      echo "用法: bash install.sh [--workspace <path>] [--repo <path>] [--skip-preflight]"
-      echo "  --workspace        OpenClaw Main Agent workspace 路径 (默认: openclaw 动态解析)"
+      echo "用法: bash install.sh [--workspace <path>] [--main-agent <id>] [--skill-location shared|agent] [--repo <path>] [--skip-preflight]"
+      echo "  --workspace        Development Team 主体安装到哪个 workspace（默认 openclaw 解析）"
+      echo "  --main-agent       主 Agent id（如 jarvis）。避免 openclaw 误判为 CLI 默认 agent（如宝总）"
+      echo "  --skill-location    Skill 安装为 shared managed（默认, 所有 agent 可见）或 agent 私有"
       echo "  --repo             Development Team 仓库路径 (默认: 自动 clone)"
       echo "  --skip-preflight   跳过 Multi-Agent Installation Context Preflight"
       exit 0 ;;
@@ -160,18 +198,17 @@ fi
 
 # 确定安装位置：Team-level capability → shared managed skills（所有 agent 可见）
 # 不把 Development Team Skill 重复复制到每个 Developer/Reviewer 私有 workspace。
-# 规则：用户显式指定 --workspace 时尊重之（Skill 随该 workspace）；否则默认 shared managed。
-if [[ "$WORKSPACE_EXPLICIT" -eq 1 ]]; then
+# 修复：skill 位置由 --skill-location 显式决定（默认 shared），不再因 --workspace 自动变私有——
+#       旧逻辑会导致「显式 --workspace 时 skill 装到私有，而未覆盖 shared」，产生重复副本。
+if [[ "$SKILL_MODE" == "agent" ]]; then
   SKILL_PARENT="$WORKSPACE/skills"
-  info "Skill 安装位置（显式 --workspace）: $WORKSPACE/skills/development-team"
+  info "Skill 安装位置（--skill-location=agent 私有）: $WORKSPACE/skills/development-team"
+elif [[ -n "$SHARED_SKILL_SRC" ]] && [[ -d "$SHARED_SKILL_SRC" ]]; then
+  SKILL_PARENT="$SHARED_SKILL_SRC"
+  info "Skill 安装位置（shared managed，Team-level，所有 agent 可见）: $SHARED_SKILL_SRC/development-team"
 else
-  if [[ -n "$SHARED_SKILL_SRC" ]] && [[ -d "$SHARED_SKILL_SRC" ]]; then
-    SKILL_PARENT="$SHARED_SKILL_SRC"
-    info "Skill 安装位置（shared managed，所有 agent 可见）: $SHARED_SKILL_SRC/development-team"
-  else
-    SKILL_PARENT="$WORKSPACE/skills"
-    info "Skill 安装位置（Main Agent workspace）: $WORKSPACE/skills/development-team"
-  fi
+  SKILL_PARENT="$WORKSPACE/skills"
+  info "Skill 安装位置（Main Agent workspace）: $WORKSPACE/skills/development-team"
 fi
 
 DT_DIR="$WORKSPACE/openclaw-development-team"
