@@ -23,6 +23,7 @@ acceptance_criteria:
 expected_output: templates/implementation-result.yaml
 result_owner: <LEAD_SESSION>   # 必须 = Lead / requester session
 timeout:
-  source: agents.defaults.subagents.runTimeoutSeconds
-  on_timeout: SUBAGENT_TIMEOUT
+  # Workflow 层任务控制字段（非 sessions_spawn 参数）。
+  # 超时/恢复由 Main Agent 依据 sessions_history / subagents 状态 / completion 判断（result-closure.md R1→R2→R3）。
+  on_timeout: R1_RETRY
 attempt: 1

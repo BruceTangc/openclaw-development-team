@@ -19,7 +19,7 @@ Delegation Contract 是 Main Agent 交给 Developer 的「工作说明书」：�
 | `acceptance_criteria` | 可验证成功条件 |
 | `expected_output` | 产出格式（Implementation Result YAML） |
 | `result_owner` | **Main Agent / requester session**（非最终用户） |
-| `timeout` | 超时策略 |
+| `timeout` | Workflow 层任务控制字段（非 sessions_spawn 参数），超时/恢复由 Main Agent 依据 sessions_history / subagents 状态判断 |
 | `attempt` | 第几次尝试 |
 
 ## 硬约束
@@ -34,7 +34,7 @@ Delegation Contract 是 Main Agent 交给 Developer 的「工作说明书」：�
 
 ## 委派动作
 
-填好后用 `sessions_spawn` 委派：
+填好后用 `sessions_spawn` 委派（**Developer 唯一独立执行体，必须显式指定 model / context / taskName**）：
 
 ```text
 sessions_spawn(
@@ -42,6 +42,9 @@ sessions_spawn(
   taskName = <task_id 的小写匹配名>,
   label = <human-readable label>,
   cwd = <目标工作目录, 可选>,
-  context = isolated
+  model = "deepseek/deepseek-v4-flash",   # 必须显式指定，不依赖默认模型
+  context = "isolated"                      # 必须 isolated
 )
 ```
+
+> **timeout 说明**：`timeout` 是 Workflow 层的任务控制字段，**不是 `sessions_spawn` 参数**（`sessions_spawn` 不支持 per-call timeout）。超时与恢复由 Main Agent 依据 `sessions_history` / `subagents` 状态 / completion 判断，走 `result-closure.md` 的 R1（Retry）→ R2（接管）→ R3（ESCALATE）阶梯。
