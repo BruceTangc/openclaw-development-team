@@ -1,0 +1,22 @@
+# openclaw skill .gitignore
+# 缓存 / 编译
+__pycache__/
+*.pyc
+node_modules/ (若需要)
+
+# 本地配置 / 密钥
+.env
+.env.*
+!.env.example
+secrets/
+*.key
+
+# 数据 / 临时
+data/
+output/
+tmp/
+cache/
+*.tmp
+*.bak
+*.log
+.DS_Store

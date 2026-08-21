@@ -24,7 +24,7 @@ Reviewer Workflow（Main Agent 执行，非独立 Agent，不 spawn）
   ├─ 2. Requirement / IDEAL Compliance
   ├─ 3. Code Review
   ├─ 4. Security
-  ├─ 5. Repository Review
+  ├─ 5. Repository Review（含 5a GitHub Hygiene Review、5b Stranger User Audit，项目交付时强制）
   └─ 6. Release Readiness
   ↓
 final_decision: APPROVED | REWORK_REQUIRED
@@ -84,6 +84,32 @@ final_decision: APPROVED | REWORK_REQUIRED
 - Git 状态一致性
 - 文档一致性（行为变了 → 受影响文档同步）
 
+### 3.5a GitHub Hygiene Review（项目交付强制）
+
+当任务是交付一个陌生用户可获取/运行的项目（新仓库 / 对外发布 / 完整项目交付）时，必须执行。看内容，不只是文件存在：
+
+- [ ] README 在**根目录**
+- [ ] 无临时文件（`*.tmp` / `*.log` / 调试残留）
+- [ ] 无 `__pycache__` / 编译产物进版本控制
+- [ ] 无 `.env` / secrets / API keys / 令牌 / 密码（扫内容，`bash scripts/check-secrets.sh <repo>`）
+- [ ] 无本地绝对路径硬编码（`/home/<user>/...`、`C:\Users\...`）
+- [ ] `.gitignore` 正确（忽略依赖/缓存/密钥/构建产物）
+- [ ] 目录结构清晰、commit 信息清晰
+- [ ] LICENSE 合适（如适用）
+- [ ] CHANGELOG 合适（如适用）
+
+> 可用 `bash scripts/project-readiness-check.sh <repo> <type>` 自动辅助（工具层检查 + STRANGER AUDIT 人工项）。
+
+### 3.5b Stranger User Audit（项目交付强制）
+
+当任务是交付可独立运行的项目（非仅内部代码改动）时，必须把项目 **clone 到干净临时目录**（`mktemp -d`），**完全按 README 执行**：安装 → 配置 → Quick Start → 运行 → 测试。
+
+- **不允许依赖 Developer 没有写入文档的隐含知识**（不从 Developer 会话/注释/私聊取信息）。
+- 文档缺失任何必要步骤 → 必须 `REJECT`。
+- 全程可复现、无文档外依赖 → 通过；否则 REJECT。
+
+> 判定边界：无法真实 clone 的外部仓库/环境缺失 → 标记 `NOT RUN`（禁止伪造 PASS），并由 Lead 决定是否放宽或升级。
+
 ### 3.6 Release Readiness
 
 Reviewer 只判断「当前变更是否具备进入后续 Git / Version / Release 流程的条件」，产出 `review_gate` 结论。
@@ -118,7 +144,9 @@ Reviewer 就绪判断维度：
 | `requirement_compliance` | 需求/IDEAL 符合性（status / unmet） |
 | `code_findings` | 代码/架构 finding（severity / file / message / required_action） |
 | `security_findings` | 安全 finding |
-| `repository_findings` | 仓库整洁/一致性 finding |
+| `repository_findings` | 仓库整洁/一致性 finding（含 GitHub Hygiene Review 结果） |
+| `stranger_user_audit` | Stranger User Audit 结果（project_delivery 时）：status(clone/install/config/quickstart/run/test 每步 PASS/REJECT/NOT_RUN) + summary |
+| `readiness_check` | Project Readiness Check 结果（PASS/FAIL/NOT_RUN + defects） |
 | `review_gate` | Reviewer 审查结论：当前变更是否具备进入后续 Git/Push/Release 流程（tests_pass / independent_verification_pass / review_approved / repository_clean / version_ready / changelog_ready）。⚠️ 不是真正的 GitHub Release Gate（见 `release.md`） |
 | `final_decision` | APPROVED / REWORK_REQUIRED |
 | `required_actions` | 必须修复项（REWORK_REQUIRED 时非空） |
@@ -138,6 +166,8 @@ Reviewer 就绪判断维度：
 |:--|:--|
 | APPROVED | → 进入 Git / Version / Changelog / Release |
 | REWORK_REQUIRED | → Rework 循环（见 `rework-loop.md`） |
+
+> 项目交付场景：Stranger User Audit 或 GitHub Hygiene REJECT → 必须 `REWORK_REQUIRED`（或缺文档）让 Developer/Lead 补齐 README 等交付件。
 
 ## 7. 迁移来源说明
 

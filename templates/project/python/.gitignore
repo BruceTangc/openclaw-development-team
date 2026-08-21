@@ -1,0 +1,25 @@
+# python project .gitignore
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# 本地配置 / 密钥
+.env
+.env.*
+!.env.example
+
+# 临时 / 构建
+*.tmp
+*.bak
+*.log
+.DS_Store
+dist/
+build/
+*.egg-info/

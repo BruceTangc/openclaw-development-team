@@ -155,6 +155,13 @@ else
   warn "⚠️  skills/ 目录不存在"
 fi
 
+# 7b. 项目交付就绪检查脚本存在且可执行
+if [[ -f "$DT_DIR/scripts/project-readiness-check.sh" ]] && [[ -x "$DT_DIR/scripts/project-readiness-check.sh" ]]; then
+  info "✅ 项目交付就绪检查脚本: project-readiness-check.sh"
+else
+  warn "⚠️  project-readiness-check.sh 缺失或不可执行（非致命）"
+fi
+
 # ─── 结果 ───
 echo ""
 if [[ "$PASS" == "true" ]]; then

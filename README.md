@@ -100,9 +100,13 @@ Requirement / Research / Repository Analysis / Architect / Validator 不再是�
 
 | 档位 | 路径 | 说明 |
 |:--|:--|:--|
-| SIMPLE | Understand → Implement → Test → Review(按需) → Commit | 单文件小改、typo、文档 |
-| FEATURE | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Commit → Version/Changelog | 新功能、多文件 |
-| COMPLEX | 检查 IDEAL → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Git → Version → Release | 新架构、多系统、安全 |
+| SIMPLE | Understand → Implement → Test → Review(按需) → Readiness Check → Commit | 单文件小改、typo、文档 |
+| FEATURE | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Readiness Check → Commit → Version/Changelog | 新功能、多文件 |
+| COMPLEX | 检查 IDEAL → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Git → Readiness Check → Version → Release | 新架构、多系统、安全 |
+
+> **项目交付标准**：任何可独立运行的项目（新仓库/对外发布），Developer 提交前必须跑
+> `scripts/project-readiness-check.sh` 并通过；Developer 只能宣布 `IMPLEMENTATION COMPLETE`，
+> `PROJECT COMPLETE` 由 Reviewer + Lead 判定。详见 `docs/PROJECT-DELIVERY-STANDARD.md`。
 
 ---
 
@@ -133,7 +137,13 @@ protocols/
   human-decision.md              # Human Decision 触发条件
   main-agent-integration.md      # Production Integration
 templates/                       # 收敛后的 YAML 模板
-scripts/                         # V1 辅助验收/断言脚本（Git/Version/Changelog/Release/Protection）
+scripts/
+  project-readiness-check.sh     # 项目交付就绪检查（提交大门，见 docs/PROJECT-DELIVERY-STANDARD.md）
+  # 其余 V1 辅助验收/断言脚本（Git/Version/Changelog/Release/Protection）
+docs/
+  PROJECT-DELIVERY-STANDARD.md   # 项目级 Definition of Done（代码完成≠项目完成）
+templates/
+  project/                       # 交付项目模板：generic / python / node / openclaw-skill / docker
 .tasks/                          # 工程 Artifact 持久化
 ```
 
@@ -149,7 +159,7 @@ Reviewer
   ├─ 2. Requirement / IDEAL Compliance
   ├─ 3. Code Review
   ├─ 4. Security
-  ├─ 5. Repository Review
+  ├─ 5. Repository Review（含 5a GitHub Hygiene、5b Stranger User Audit，项目交付时强制）
   └─ 6. Release Readiness
   ↓
 final_decision: APPROVED | REWORK_REQUIRED
@@ -158,6 +168,8 @@ final_decision: APPROVED | REWORK_REQUIRED
 这样既不重新膨胀成多个 Agent，又不因砍掉 Validator 而降低质量。
 
 > Reviewer 的完整 6 步冻结顺序与字段定义见 `protocols/review-adapter.md`。
+> 项目交付时 Reviewer 还必须执行 **Stranger User Audit**（clone 到干净目录、严格按 README 复现
+> 安装/配置/Quick Start/运行/测试）与 **GitHub Hygiene Review**，见 `docs/PROJECT-DELIVERY-STANDARD.md` §6-§7。
 
 ---
 

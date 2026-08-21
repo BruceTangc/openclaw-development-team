@@ -1,0 +1,19 @@
+# docker .gitignore
+# 构建 / 运行产物
+node_modules/
+dist/
+build/
+coverage/
+*.log
+*.tmp
+*.bak
+.DS_Store
+
+# 本地配置 / 密钥
+.env
+.env.*
+!.env.example
+
+# 数据卷（若由本地生成）
+data/
+pgdata/

@@ -1,0 +1,14 @@
+{
+  "name": "<project-name>",
+  "version": "0.1.0",
+  "description": "一句话描述",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

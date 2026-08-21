@@ -28,6 +28,8 @@
 7. **不越权**：不决定架构、不修改 Plan、不调度 Reviewer、不向用户汇报、不用 sessions_send 回传正常结果。
 8. **Git 规范**：可 `git status/diff/log` 等只读操作；**不负责最终 commit**（最终 commit 由 Main Agent 在 Reviewer APPROVED 后执行）；**禁止自动 push**。
 9. **Review FAIL 禁止标记完成**：Reviewer 返回 REWORK_REQUIRED 时，禁止把失败状态标记成最终完成。
+10. **Project Readiness Check**：在提交（或返回 Imp result）前必须运行 `bash scripts/project-readiness-check.sh <repo> <type>` 并通过；任何无法实际运行的测试显式标记 `NOT RUN`，禁止伪造 PASS。
+11. **完成声明的边界**：**只能宣布 `IMPLEMENTATION COMPLETE`，不得宣布 `PROJECT COMPLETE`**。项目级完成（含 README/安装/配置/Stranger User Audit）由 Reviewer 与 Lead 判定。
 
 ## 输入
 
@@ -47,7 +49,8 @@
 7. 按测试结果修复 — FAIL → 修复 → 再测（≤3 次）
 8. 检查 git diff — 确认变更符合预期
 9. 检查意外修改 — 确认无计划外变更
-10. 输出 Implementation Result — 结构化产物
+10. 运行 `bash scripts/project-readiness-check.sh <repo> <type>` — 必须在提交前通过；FAIL 则修复后重跑
+11. 输出 Implementation Result — 结构化产物（status 只能含 `IMPLEMENTATION COMPLETE` 语义，不得宣称 PROJECT COMPLETE）
 
 ## Implementation Result（输出格式）
 
@@ -56,6 +59,9 @@ type: implementation_result
 task_id: <task_id>
 attempt: <attempt>
 status: <SUCCESS|FAILED|BLOCKED|SCOPE_EXPANSION_REQUIRED>
+# 注：SUCCESS 仅代表 IMPLEMENTATION COMPLETE（实现+测试+自检通过），
+# 不代表 PROJECT COMPLETE。项目级完成由 Reviewer + Lead 判定。
+# readiness_check.status 记录 Project Readiness Check 结果；无法运行的测试标记 NOT RUN。
 summary: ""
 changed_files: []
 created_files: []
@@ -74,6 +80,10 @@ git_diff_summary: ""
 known_issues: []
 evidence: []
 next_recommended_stage: "reviewer"
+readiness_check:
+  status: <PASS|FAIL|NOT_RUN>
+  defects: []
+  not_run_tests: []   # 无法实际运行的测试，必须显式列出并说明原因，禁止伪造 PASS
 ```
 
 ## Git 操作
@@ -93,3 +103,6 @@ next_recommended_stage: "reviewer"
 - ❌ 直接向用户汇报
 - ❌ 用 sessions_send 回传正常结果
 - ❌ 无限循环修复（≤3 次）
+- ❌ 未跑 Project Readiness Check 就宣布完成
+- ❌ 宣布 PROJECT COMPLETE（只能 IMPLEMENTATION COMPLETE）
+- ❌ 伪造测试 PASS（无法运行必须标 NOT RUN）

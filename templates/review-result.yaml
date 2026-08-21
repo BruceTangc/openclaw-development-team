@@ -35,6 +35,19 @@ code_findings: []            # 代码/架构 finding
 security_findings: []        # 安全 finding
 repository_findings: []      # 仓库整洁/一致性 finding
 
+# 项目交付（完整可独立运行项目）时的强制检查结果
+project_delivery:
+  github_hygiene:
+    status: ""              # PASS | NOT_APPLICABLE | FAIL
+    checks: []               # 各项：README 根目录 / 无临时文件 / 无 __pycache__ / 无 .env / 无 secrets / 无本地绝对路径 / .gitignore 正确 / 结构清晰 / commit 清晰 / LICENSE / CHANGELOG
+  stranger_user_audit:
+    status: ""              # PASS | NOT_APPLICABLE | NOT_RUN | REJECT
+    steps: []                # clone / install / config / quickstart / run / test 每步 PASS|FAIL|NOT_RUN
+    summary: ""
+  readiness_check:
+    status: ""              # PASS | FAIL | NOT_RUN（scripts/project-readiness-check.sh）
+    defects: []
+
 # Reviewer 审查结论（review_gate）：表示「当前变更是否具备进入后续 Git/Push/Release 流程」。
 # ⚠️ 这不是真正的 GitHub Release Gate（后者见 protocols/release.md，含 version/CHANGELOG 前置条件）。
 review_gate:

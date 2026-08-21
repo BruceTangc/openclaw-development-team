@@ -68,6 +68,7 @@ Development Team **不允许擅自改变 IDEAL**。缺失/冲突/歧义/无法�
 - Reviewer 是 Workflow 内部阶段，由 Main Agent 执行，不 spawn；检查能力迁移自 `openclaw-github-repository-reviewer`（基准 20583a7），V1 不依赖其运行。
 - 强制「独立验证」子步骤（独立读代码/Git Diff、独立复跑关键测试、查边界、查 Regression、必要时加临时验证）。
 - 检查：IDEAL/Requirement、Acceptance Criteria、Implementation、Git Diff、Regression、Tests、Documentation、Unrelated Changes、Repository Review（含 Security 与 Release Readiness，6 步冻结顺序见 `review-adapter.md`）。
+- 项目交付时 Reviewer 额外执行 **GitHub Hygiene Review** 与 **Stranger User Audit**（clone 干净目录、严格按 README 复现安装/配置/Quick Start/运行/测试）；Developer 提交前必须跑 `scripts/project-readiness-check.sh`。详见 `docs/PROJECT-DELIVERY-STANDARD.md`。
 - 结果：APPROVED / REWORK_REQUIRED。
 - REWORK_REQUIRED → Development Workflow → Developer → Test → Reviewer，超限 → FAILED。
 

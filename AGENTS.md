@@ -37,6 +37,11 @@ Git / Version / CHANGELOG / GitHub Release（Main Agent 收尾）
 
 Main Agent 收到需求后，先判断复杂度，选对路径。**简单任务必须简单处理，禁止过度工程化。**
 
+> **项目交付标准**：任何可独立运行的项目（新仓库 / 对外发布），Developer 提交前必须跑
+> `scripts/project-readiness-check.sh <repo> <type>` 并通过；Developer 只能宣布 `IMPLEMENTATION COMPLETE`，
+> `PROJECT COMPLETE` 由 Reviewer + Lead 判定（含 Stranger User Audit + GitHub Hygiene Review）。
+> 详见 `docs/PROJECT-DELIVERY-STANDARD.md`。
+
 | 档位 | 特征 | 路径 | spawn 次数 |
 |:--|:--|:--|:--|
 | **SIMPLE** | typo / 单文件小改 / 文档 / 简单配置 / 明确小 bug | Understand → Implement → Test(必要) → Review(按需，见触发条件) → Commit | 0~1（可能不 spawn，直接做或单个 Developer） |

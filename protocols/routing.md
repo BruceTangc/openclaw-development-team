@@ -6,9 +6,11 @@
 
 | 档位 | 特征 | 路径 | spawn |
 |:--|:--|:--|:--|
-| **SIMPLE** | typo / 单文件小改 / 文档 / 简单配置 / 明确小 bug | Understand → Implement → Test(必要) → Review(按需) → Commit | 0~1 |
-| **FEATURE** | 多文件 / 新功能 / API 集成 / 数据处理 | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Rework → Commit → Version/Changelog | 1（Developer） |
-| **COMPLEX** | 新架构 / 多系统 / 安全 / 大重构 / 产品方向不清 | 检查 IDEAL → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → Version → Release | 1（Developer） |
+| **SIMPLE** | typo / 单文件小改 / 文档 / 简单配置 / 明确小 bug | Understand → Implement → Test(必要) → Review(按需) → **Readiness Check(必要)** → Commit | 0~1 |
+| **FEATURE** | 多文件 / 新功能 / API 集成 / 数据处理 | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Rework → **Readiness Check** → Commit → Version/Changelog | 1（Developer） |
+| **COMPLEX** | 新架构 / 多系统 / 安全 / 大重构 / 产品方向不清 | 检查 IDEAL → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → **Readiness Check** → Version → Release | 1（Developer） |
+
+> 项目交付（可独立运行的项目 / 新仓库）时，Developer 提交前**必须**跑 `bash scripts/project-readiness-check.sh <repo> <type>` 并通过；无法运行测试标 `NOT RUN`；Developer 只能宣布 `IMPLEMENTATION COMPLETE`，`PROJECT COMPLETE` 由 Reviewer + Lead 判定。详见 `docs/PROJECT-DELIVERY-STANDARD.md`。
 
 ## 2. 复杂度判断规则
 
