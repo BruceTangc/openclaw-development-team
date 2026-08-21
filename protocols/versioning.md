@@ -29,9 +29,12 @@ MAJOR.MINOR.PATCH
 
 ## 4. 版本号来源
 
-- 优先读仓库现有版本（package.json / VERSION 文件 / CHANGELOG 顶部 / git tag）。
-- 无版本 → 从 0.1.0 起（或按项目现状判断）。
-- bump 后同步更新 CHANGELOG（见 `changelog.md`）。
+- **Development Team 自身的权威版本源 = 根目录 `VERSION` 文件**（单文件，例如 `1.0.0`）。
+- `VERSION`、`CHANGELOG` 顶部版本、git tag、GitHub Release **必须四者一致**。
+- 发布前必须校验：`VERSION` 内容 == `CHANGELOG.md` 顶部 `## [x.y.z]` == 最新 git tag `vx.y.z` == GitHub Release 版本。
+- 每次 **Version bump**（按 §2）同步更新 `VERSION` → `CHANGELOG` → （满足条件）git tag + Release。
+- **禁止每个 commit 自动 bump**（见 §6）。
+- 优先读仓库现有版本（`VERSION` / package.json / git tag）；无版本 → 从 0.1.0 起。
 
 ## 5. 与 CHANGELOG / Release 的关系
 

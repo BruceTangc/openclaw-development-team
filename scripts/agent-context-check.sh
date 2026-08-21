@@ -23,10 +23,11 @@
 # 用法：
 #   bash scripts/agent-context-check.sh [--json] [--agent <id>] [--skill <name>]
 #
-# 退出码：
-#   0  = 全部通过（或仅 NOT RUN / N/A）
-#   1  = 存在阻断性缺陷（环境不满足 / 检测到错误）
-#   2  = 非阻断警告
+# 退出码（供 install.sh / CI 消费）：
+#   0  = PASS           环境可用于安装，无阻断缺陷、无未验证项
+#   1  = BLOCKING FAIL  存在阻断性缺陷 → 应阻止安装（INSTALL BLOCKED）
+#   2  = WARN           有非阻断警告，可继续但需确认
+#   3  = NOT RUN        存在无法验证项 → 不被认定为 PASS，不静默放行
 #
 # ── 动态解析（对，硬编码禁止；全部来自 OpenClaw 运行时或官方 CLI）──
 #   OPENCLAW_HOME           ~/.openclaw                                    （标准约定）
@@ -49,14 +50,15 @@ na()   { NA=$((NA+1)); echo -e "  ${NC}[N/A ] $*"; }
 notrun(){ NR=$((NR+1)); echo -e "  ${YELLOW}[NR  ]${NC} $* (NOT RUN — 无法验证，不假设 PASS)"; }
 
 # ─── 参数 ───
-JSON=0; TARGET_AGENT=""; SKILL_NAME="development-team"
+JSON=0; TARGET_AGENT=""; SKILL_NAME="development-team"; DT_REPO=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --json)      JSON=1; shift ;;
     --agent)     TARGET_AGENT="$2"; shift 2 ;;
     --skill)     SKILL_NAME="$2"; shift 2 ;;
+    --repo)      DT_REPO="$2"; shift 2 ;;
     -h|--help)
-      echo "用法: bash scripts/agent-context-check.sh [--json] [--agent <id>] [--skill <name>]"; exit 0 ;;
+      echo "用法: bash scripts/agent-context-check.sh [--json] [--agent <id>] [--skill <name>] [--repo <dt-repo>]"; exit 0 ;;
     *) echo "未知参数: $1" >&2; exit 2 ;;
   esac
 done
@@ -203,21 +205,29 @@ else
 fi
 
 # ─── 7. 验证调用链 Main Agent → Development Team → Developer → Reviewer ───
+# 调用链文件存在性应基于「Development Team 仓库本体」（安装源），而非安装目标 workspace——
+# 因为安装前目标 workspace 中这些文件尚不存在，若据此判定会造成 NOT RUN→INSTALL BLOCKED 死循环。
 echo ""
-echo "--- [7] 调用链验证 ---"
-if [[ -d "$WORKSPACE_DIR/openclaw-development-team/agents/developer" ]] \
-   && [[ -f "$WORKSPACE_DIR/openclaw-development-team/agents/developer/AGENTS.md" ]]; then
-  ok "调用链就绪: Main Agent → Development Team（$WORKSPACE_DIR/openclaw-development-team）→ Developer (agents/developer/AGENTS.md)"
+echo "--- [7] 调用链验证（基于 DT 仓库源文件） ---"
+CHAIN_BASE="$DT_REPO"
+if [[ -z "$CHAIN_BASE" ]] || [[ ! -d "$CHAIN_BASE" ]]; then
+  # 未提供 --repo：回退检查当前脚本所在仓库（DT 本体）
+  SCRIPT_DIR_REAL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  CHAIN_BASE="$(cd "$SCRIPT_DIR_REAL/.." && pwd)"
+fi
+
+if [[ -d "$CHAIN_BASE/agents/developer" ]] && [[ -f "$CHAIN_BASE/agents/developer/AGENTS.md" ]]; then
+  ok "调用链就绪: Main Agent → Development Team → Developer (agents/developer/AGENTS.md, 源=$CHAIN_BASE)"
 else
-  notrun "调用链文件未在 Main Agent workspace 找到（Skill 安装尚未执行）— 由真实安装/Stranger Audit 验证，不假设 PASS"
+  fail "Development Team 仓库缺少 agents/developer/AGENTS.md — 调用链不完整（源=$CHAIN_BASE）"
 fi
 
 # Reviewer 是 Workflow 内部阶段（非独立 Agent），非 OpenClaw agent 枚举项。
 # 验证其存在性靠 Development Team 仓库内的 review-adapter 协议。
-if [[ -f "$WORKSPACE_DIR/openclaw-development-team/protocols/review-adapter.md" ]]; then
+if [[ -f "$CHAIN_BASE/protocols/review-adapter.md" ]]; then
   ok "Reviewer 阶段定义存在 (protocols/review-adapter.md) — 属于 Main Agent 的工作流内部阶段"
 else
-  notrun "无法在 Main Agent workspace 定位 review-adapter.md — 安装后由 Stranger Audit 验证"
+  warn "Development Team 仓库缺少 protocols/review-adapter.md — Reviewer 阶段定义缺失"
 fi
 
 # ─── 8 & 9. 汇总 ───
@@ -243,10 +253,16 @@ echo "说明: 本 preflight 只读、无副作用，不执行真实安装。"
 echo "真正的多 Agent 安装/运行验证由 Reviewer Stranger User Audit / E2E Test 完成。"
 echo ""
 
-if [[ "$FAIL" -eq 0 ]]; then
+if [[ "$FAIL" -gt 0 ]]; then
+  echo "RESULT: BLOCKING FAIL (存在 $FAIL 个阻断缺陷) — 环境不满足，应阻止安装"
+  exit 1
+elif [[ "$NR" -gt 0 ]]; then
+  echo "RESULT: NOT RUN ($NR 项无法验证) — 不认定为 PASS，无法确保环境就绪"
+  exit 3
+elif [[ "$WARN" -gt 0 ]]; then
+  echo "RESULT: WARN (有 $WARN 个非阻断警告) — 可继续，但请确认警告不影响安装"
+  exit 2
+else
   echo "RESULT: PASS (环境可用于 Development Team 安装)"
   exit 0
-else
-  echo "RESULT: FAIL (存在 $FAIL 个阻断缺陷)"
-  exit 1
 fi

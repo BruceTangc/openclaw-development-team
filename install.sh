@@ -15,40 +15,62 @@ warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
 # ─── 动态解析路径（不硬编码） ───
-# 优先环境变量，其次从 OpenClaw 运行时解析；无 openclaw 则回退标准约定并告警。
+# 优先环境变量，其次从 OpenClaw 运行时解析；无 openclaw 时不得静默 fallback。
 OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
 
+# 路径解析状态变量（0=dynamic 成功, 1=legacy fallback, 2=未解析）
+WS_RESOLVED=0; MANAGED_RESOLVED=0; AGENT_RESOLVED=0
+
+# 调用 openclaw skills check 并取出指定 JSON 字段；失败输出空
+openclaw_field() { # $1=字段名
+  openclaw skills check --json 2>/dev/null | python3 -c "
+import sys, json
+field='$1'
+try:
+    d=json.load(sys.stdin); print(d.get(field,'') or '')
+except Exception:
+    print('')" 2>/dev/null
+}
+
 # 解析当前 agent workspace（用 openclaw skills check 官方 API）
+# 返回：0=dynamic 成功, 1=fallback（显式标记 LEGACY FALLBACK）
 resolve_workspace() {
   if [[ -n "${OPENCLAW_WORKSPACE_DIR:-}" ]]; then
-    echo "$OPENCLAW_WORKSPACE_DIR"; return
+    echo "$OPENCLAW_WORKSPACE_DIR"; WS_RESOLVED=0; return 0
   fi
-  local out
-  out="$(openclaw skills check --json 2>/dev/null | python3 -c "import sys,json
-try:
- d=json.load(sys.stdin); print(d.get('workspaceDir','') or '')
-except: print('')" 2>/dev/null)"
-  if [[ -n "$out" ]]; then echo "$out"; return; fi
-  echo "$OPENCLAW_HOME/workspace"  # 回退（旧默认），同时下方会告警
+  local out="$(openclaw_field workspaceDir)"
+  if [[ -n "$out" ]]; then
+    echo "$out"; WS_RESOLVED=0; return 0
+  fi
+  # openclaw API 无法解析 → 不静默放行，显式标记 LEGACY FALLBACK
+  echo "$OPENCLAW_HOME/workspace"
+  WS_RESOLVED=1
+  echo "  [LEGACY FALLBACK] openclaw 无法解析 workspaceDir → 使用旧默认 $OPENCLAW_HOME/workspace" >&2
+  return 1
 }
 
 # 解析 shared managed skills 目录
 resolve_managed_skills() {
-  local out
-  out="$(openclaw skills check --json 2>/dev/null | python3 -c "import sys,json
-try:
- d=json.load(sys.stdin); print(d.get('managedSkillsDir','') or '')
-except: print('')" 2>/dev/null)"
-  if [[ -n "$out" ]]; then echo "$out"; return; fi
-  echo "$OPENCLAW_HOME/skills"  # 回退
+  local out="$(openclaw_field managedSkillsDir)"
+  if [[ -n "$out" ]]; then
+    echo "$out"; MANAGED_RESOLVED=0; return 0
+  fi
+  echo "$OPENCLAW_HOME/skills"
+  MANAGED_RESOLVED=1
+  echo "  [LEGACY FALLBACK] openclaw 无法解析 managedSkillsDir → 使用旧默认 $OPENCLAW_HOME/skills" >&2
+  return 1
 }
 
 # 解析 openclaw.json 中的 Main Agent id
 resolve_main_agent() {
-  openclaw skills check --json 2>/dev/null | python3 -c "import sys,json
-try:
- d=json.load(sys.stdin); print(d.get('agentId','') or '')
-except: print('')" 2>/dev/null
+  local out="$(openclaw_field agentId)"
+  if [[ -n "$out" ]]; then
+    echo "$out"; AGENT_RESOLVED=0; return 0
+  fi
+  AGENT_RESOLVED=1
+  echo "  [LEGACY FALLBACK] openclaw 无法解析 agentId" >&2
+  echo ""
+  return 1
 }
 
 # ─── 参数解析 ───
@@ -79,7 +101,11 @@ command -v bash >/dev/null 2>&1 || error "需要 bash"
 # 未手动指定 workspace → 动态解析
 if [[ -z "$WORKSPACE" ]]; then
   WORKSPACE="$(resolve_workspace)"
-  info "Main Agent workspace (openclaw 解析): $WORKSPACE"
+  if [[ "$WS_RESOLVED" -eq 1 ]]; then
+    warn "路径采用 LEGACY FALLBACK（openclaw 动态解析失败）— 不会被当作动态解析成功"
+  else
+    info "Main Agent workspace (openclaw 动态解析): $WORKSPACE"
+  fi
 fi
 
 # 解析 Main Agent + managed skills 目录
@@ -92,22 +118,38 @@ if [[ -n "$MAIN_AGENT" ]]; then
 else
   warn "未能识别 Main Agent id（openclaw skills check 未返回 agentId）"
 fi
+if [[ "$AGENT_RESOLVED" -eq 1 || "$MANAGED_RESOLVED" -eq 1 ]]; then
+  warn "部分路径解析为 LEGACY FALLBACK，后续 preflight/安装请结合 NOT RUN / INSTALL BLOCKED 判定"
+fi
 
 # ─── Multi-Agent Installation Context Preflight ───
 # 只读、无副作用；验证环境能力 + discovery 原则，不执行真实安装。
+# 三态结果处理：exited 0=PASS / 2=WARN / 3=NOT RUN / 1=BLOCKING FAIL
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ "$SKIP_PREFLIGHT" -eq 0 ]]; then
-  if [[ -f "$SCRIPT_DIR/scripts/agent-context-check.sh" ]]; then
-    info "=== Multi-Agent Installation Context Preflight ==="
-    if [[ -n "$MAIN_AGENT" ]]; then
-      bash "$SCRIPT_DIR/scripts/agent-context-check.sh" --agent "$MAIN_AGENT" || true
-    else
-      bash "$SCRIPT_DIR/scripts/agent-context-check.sh" || true
-    fi
-    info "（Preflight 失败不会中断安装，但请阅读上方 WARN/FAIL 判断环境是否就绪）"
-  else
-    warn "未找到 agent-context-check.sh，跳过 Preflight"
+if [[ "$SKIP_PREFLIGHT" -eq 1 ]]; then
+  warn "已 --skip-preflight 跳过 Preflight — 安装前环境未验证，请自行确保就绪"
+elif [[ -f "$SCRIPT_DIR/scripts/agent-context-check.sh" ]]; then
+  info "=== Multi-Agent Installation Context Preflight ==="
+  # 用 `|| rc=$?` 捕获退出码，避免 set -e 在非零时直接终止而吞掉状态处理
+  PREFLIGHT_RC=0
+  PREFLIGHT_REPO="$REPO_DIR"
+  # 未指定 --repo（将自动 clone/或用本地）：让 preflight 用 DT 仓库本体路径作为调用链源，避免 NOT RUN 死锁
+  if [[ -z "$PREFLIGHT_REPO" ]]; then
+    PREFLIGHT_REPO="$SCRIPT_DIR"
   fi
+  if [[ -n "$MAIN_AGENT" ]]; then
+    bash "$SCRIPT_DIR/scripts/agent-context-check.sh" --agent "$MAIN_AGENT" --repo "$PREFLIGHT_REPO" || PREFLIGHT_RC=$?
+  else
+    bash "$SCRIPT_DIR/scripts/agent-context-check.sh" --repo "$PREFLIGHT_REPO" || PREFLIGHT_RC=$?
+  fi
+  case "$PREFLIGHT_RC" in
+    0) info "Preflight → PASS" ;;
+    2) warn "Preflight → WARN（有非阻断警告，继续安装，请留意）" ;;
+    3) error "Preflight → NOT RUN（存在无法验证项，不认定为 PASS）→ INSTALL BLOCKED" ;;
+    *) error "Preflight → BLOCKING FAIL（存在阻断缺陷）→ INSTALL BLOCKED" ;;
+  esac
+else
+  error "未找到 agent-context-check.sh，无法执行必需的 Multi-Agent Preflight → INSTALL BLOCKED（可用 --skip-preflight 显式跳过）"
 fi
 
 # 检查 workspace 是否存在
