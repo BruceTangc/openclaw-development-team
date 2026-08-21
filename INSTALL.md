@@ -1,0 +1,233 @@
+# Installation Guide — Development Team V1
+
+Development Team 是 OpenClaw 上的自动化软件开发流水线。本文档指导你从零完成安装。
+
+---
+
+## 前置条件
+
+### 必需
+
+| 依赖 | 最低版本 | 说明 | 安装方式 |
+|:--|:--|:--|:--|
+| **OpenClaw** | ≥ 1.x | 运行时环境，需要 `sessions_spawn` / `subagents` / `tools` | [docs.openclaw.ai](https://docs.openclaw.ai) |
+| **Git** | ≥ 2.x | 版本控制 + worktree 支持 | `apt install git` / `brew install git` |
+| **Bash** | ≥ 4.x | 安装脚本和 Reviewer 辅助脚本 | 系统自带（macOS 需 Homebrew bash） |
+
+### 推荐（完整功能）
+
+| 依赖 | 说明 | 安装方式 |
+|:--|:--|:--|
+| **DeepSeek API Key** | Developer 模型（deepseek-v4-flash）需要 | [platform.deepseek.com](https://platform.deepseek.com) |
+| **gh CLI** | GitHub Release / repo 操作需要 | `apt install gh` / `brew install gh` / [cli.github.com](https://cli.github.com) |
+| **Python 3** | E2E 验收脚本需要 | `apt install python3` / 系统自带 |
+| **SSH key 或 gh auth** | Git push / GitHub 操作需要 | `ssh-keygen` 或 `gh auth login` |
+
+### 模型要求
+
+- **Developer（唯一 spawn Agent）**：需要 `deepseek/deepseek-v4-flash` 或同等 DeepSeek 模型
+- 确保 OpenClaw 已配置 DeepSeek provider（`~/.openclaw/openclaw.json` 中的 `providers`）
+
+---
+
+## 安装
+
+### 方式一：一键安装（推荐）
+
+```bash
+# 克隆仓库
+git clone https://github.com/BruceTangc/openclaw-development-team.git
+cd openclaw-development-team
+
+# 运行安装器
+bash install.sh
+```
+
+安装器会自动：
+1. 将文件复制到 `~/.openclaw/workspace/openclaw-development-team/`
+2. 安装 Skill 到 `~/.openclaw/workspace/skills/development-team/`
+3. 确保脚本可执行
+4. 运行 smoke test 验证安装
+
+### 方式二：指定 workspace
+
+如果你的 OpenClaw workspace 不在默认位置：
+
+```bash
+bash install.sh --workspace /path/to/your/workspace
+```
+
+### 方式三：从本地仓库安装
+
+如果你已经 clone 了仓库：
+
+```bash
+bash install.sh --repo /path/to/openclaw-development-team
+```
+
+### 幂等性
+
+安装器**支持重复执行**：
+- 已存在的文件**不会被覆盖**（跳过并警告）
+- 已存在的 Skill **不会被覆盖**
+- 安全运行多次不会产生副作用
+
+---
+
+## 验证
+
+安装完成后，安装器会自动运行 smoke test。你也可以手动验证：
+
+```bash
+# 1. 检查文件结构
+ls ~/.openclaw/workspace/openclaw-development-team/
+# 应包含: AGENTS.md PROTOCOL.md protocols/ scripts/ templates/ agents/ skills/
+
+# 2. 检查 Skill
+cat ~/.openclaw/workspace/skills/development-team/SKILL.md
+# 应包含: name: development-team
+
+# 3. 检查脚本可执行
+ls -la ~/.openclaw/workspace/openclaw-development-team/scripts/*.sh
+# 应有 x 权限
+
+# 4. 测试 Reviewer 辅助脚本
+bash ~/.openclaw/workspace/openclaw-development-team/scripts/check-hygiene.sh ~/.openclaw/workspace
+# 应输出: HYGIENE_FOUND=0 (clean)
+```
+
+---
+
+## 使用
+
+安装完成后，直接对你的 OpenClaw Agent 说开发需求即可：
+
+```
+"帮我给 XXX 仓库新增 YYY 功能"
+"修复 ZZZ 的 bug"
+"重构 AAA 模块"
+```
+
+Agent 会自动：
+1. 判断任务复杂度（SIMPLE / FEATURE / COMPLEX）
+2. 选择对应路径
+3. 调用 Developer（DeepSeek）执行
+4. Reviewer 审查
+5. Git / Version / CHANGELOG 管理
+
+详见 [README.md](README.md) 了解完整流程。
+
+---
+
+## 依赖配置
+
+### DeepSeek API Key
+
+```bash
+# 方式一：环境变量
+export DEEPSEEK_API_KEY="sk-..."
+
+# 方式二：OpenClaw 配置（推荐）
+# 编辑 ~/.openclaw/openclaw.json，在 providers 中添加 DeepSeek
+```
+
+### gh CLI（GitHub 操作）
+
+```bash
+# 安装
+sudo apt install gh  # Ubuntu/Debian
+brew install gh       # macOS
+
+# 认证
+gh auth login
+```
+
+### Git SSH（推送代码）
+
+```bash
+# 生成 SSH key
+ssh-keygen -t ed25519 -C "your@email.com"
+
+# 添加到 GitHub
+ssh-copy-id -i ~/.ssh/id_ed25519.pub git@github.com
+
+# 测试
+ssh -T git@github.com
+```
+
+---
+
+## 卸载
+
+```bash
+bash ~/.openclaw/workspace/openclaw-development-team/uninstall.sh
+```
+
+或指定 workspace：
+
+```bash
+bash ~/.openclaw/workspace/openclaw-development-team/uninstall.sh --workspace /path/to/workspace
+```
+
+卸载器会：
+- 只删除 Development Team 自己创建的内容
+- 不触碰用户已有的 AGENTS.md、SOUL.md、MEMORY.md、skills/ 等文件
+- 卸载前要求确认
+- 支持 `--dry-run` 预览
+
+详见 [UNINSTALL.md](UNINSTALL.md)。
+
+---
+
+## 故障排除
+
+### Skill 未被 OpenClaw 识别
+
+- 确认 `skills/development-team/SKILL.md` 存在
+- 确认文件包含正确的 frontmatter（`name: development-team`）
+- 重启 OpenClaw Gateway：`openclaw gateway restart`
+
+### Developer 模型不可用
+
+- 确认 DeepSeek API key 已配置
+- 确认 `deepseek/deepseek-v4-flash` 在 OpenClaw 模型列表中
+- 测试：`openclaw status` 查看模型配置
+
+### 脚本权限不足
+
+```bash
+chmod +x ~/.openclaw/workspace/openclaw-development-team/scripts/*.sh
+chmod +x ~/.openclaw/workspace/openclaw-development-team/scripts/*.py
+```
+
+### gh CLI 未认证
+
+```bash
+gh auth login
+# 按提示完成认证
+```
+
+---
+
+## 文件结构（安装后）
+
+```
+~/.openclaw/workspace/
+├── AGENTS.md                          # 你的 Agent 入口（不被覆盖）
+├── SOUL.md                            # 你的 Agent 人格（不被覆盖）
+├── MEMORY.md                          # 你的长期记忆（不被覆盖）
+├── skills/
+│   └── development-team/
+│       └── SKILL.md                   # DT Skill 入口（安装器创建）
+└── openclaw-development-team/         # DT 仓库主体（安装器创建）
+    ├── AGENTS.md                      # DT 编排入口
+    ├── PROTOCOL.md                    # 协议总纲
+    ├── IMPLEMENTATION_SPEC.md         # 实现规范
+    ├── protocols/                     # 15 个协议文件
+    ├── scripts/                       # 辅助脚本
+    ├── templates/                     # YAML 模板
+    ├── agents/
+    │   └── developer/
+    │       └── AGENTS.md              # Developer Agent 定义
+    └── install.sh / uninstall.sh      # 安装/卸载器
+```

@@ -14,6 +14,47 @@
 
 ---
 
+## Quick Start（3 步安装）
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/BruceTangc/openclaw-development-team.git
+cd openclaw-development-team
+
+# 2. 运行安装器（幂等，可重复执行）
+bash install.sh
+
+# 3. 开始使用 — 对 Agent 说开发需求即可
+# "帮我给 XXX 仓库新增 YYY 功能"
+```
+
+> 详细安装说明见 [INSTALL.md](INSTALL.md)，卸载见 [UNINSTALL.md](UNINSTALL.md)。
+
+---
+
+## 依赖
+
+### 必需
+
+| 依赖 | 最低版本 | 说明 |
+|:--|:--|:--|
+| **OpenClaw** | ≥ 1.x | 运行时环境（sessions_spawn / subagents / tools） |
+| **Git** | ≥ 2.x | 版本控制 + worktree 支持 |
+| **Bash** | ≥ 4.x | 安装脚本和 Reviewer 辅助脚本 |
+
+### 推荐（完整功能）
+
+| 依赖 | 说明 |
+|:--|:--|
+| **DeepSeek API Key** | Developer 模型（deepseek-v4-flash）需要 |
+| **gh CLI** | GitHub Release / repo 操作需要 |
+| **Python 3** | E2E 验收脚本需要 |
+| **SSH key 或 gh auth** | Git push / GitHub 操作需要 |
+
+详见 [INSTALL.md](INSTALL.md) 的依赖配置章节。
+
+---
+
 ## 定位与原则
 
 **IDEAL 决定「做什么」，Development Team 决定「如何可靠落地」。**
@@ -127,3 +168,11 @@ V1 已完成**最小验收**：4 个真实测试（SIMPLE / FEATURE / FAIL→REW
 CASE 1-10 是能力覆盖参考清单（见 `IMPLEMENTATION_SPEC.md`），**不要求重做 10-Case 自动化 E2E**。
 
 真实验收证据见 `E2E_REPORT.md` / `V1_ACCEPTANCE_REPORT.md`。
+
+---
+
+## 安装与卸载
+
+- **安装**：`bash install.sh`（详见 [INSTALL.md](INSTALL.md)）
+- **卸载**：`bash uninstall.sh`（详见 [UNINSTALL.md](UNINSTALL.md)）
+- 安装器幂等，可重复执行；卸载器只删除 DT 自己创建的内容
