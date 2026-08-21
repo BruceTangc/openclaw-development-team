@@ -1,7 +1,5 @@
 # 施工目录 ignore
 __pycache__/
 *.pyc
-scripts/e2e_target_project/
-e2e_task.yaml
 *_result.yaml.bak
 .tasks/*/rework-*.yaml

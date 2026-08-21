@@ -21,6 +21,6 @@ steps:
       - "该步验收标准（可验证）"
 testing: "测试安排"
 validation: "验证方式（Reviewer 独立验证）"
-review: "评审安排（Repository Reviewer）"
+review: "评审安排（Reviewer，Workflow 内部阶段）"
 rollback: "回滚方案"
 definition_of_done: "完成的唯一定义（可验证，V2 可观测）"

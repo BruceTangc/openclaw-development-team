@@ -162,14 +162,15 @@ Reviewer
   │    ├─ 检查 Regression
   │    └─ 必要时增加临时验证
   ├─ 2. Requirement / IDEAL Compliance
-  ├─ 3. Code / Architecture Review
-  ├─ 4. Repository Consistency
-  └─ 5. Final Review Decision
-       ├─ APPROVED
-       └─ REWORK_REQUIRED
+  ├─ 3. Code Review
+  ├─ 4. Security
+  ├─ 5. Repository Review
+  └─ 6. Release Readiness
+  ↓
+final_decision: APPROVED | REWORK_REQUIRED
 ```
 
-- 结果字段：`independent_verification` / `tests_reproduced` / `findings` / `regression_status` / `final_decision`。
+- 结果字段（11 项，见 `templates/review-result.yaml`）：`status` / `independent_verification` / `tests_reproduced` / `regression_status` / `requirement_compliance` / `code_findings` / `security_findings` / `repository_findings` / `review_gate` / `final_decision` / `required_actions`。
 - `REWORK_REQUIRED` → Reviewer → Development Workflow → Developer → Test → Reviewer；超过最大次数 → FAILED。
 
 ---

@@ -5,25 +5,21 @@
 
 ## 1. IDEAL 定义
 
-```
-I — Objective（目标）
-D — （无）
-E — （无）
-A — （无）
-L — （无）
-```
+IDEAL 是高层设计输入的字段约定（名称沿用，非逐字母缩写）。完整字段集固定为 **7 项**：
 
-> 注：IDEAL 不是逐字母缩写，是五个字段的首字母约定：
+> IDEAL = **O**bjective / **S**cope / **R**equirements / **A**rchitecture / **I**mplementation Constraints / **A**cceptance Criteria / **O**ut of Scope
 
-| 字段 | 全称 | 含义 |
-|:--|:--|:--|
-| **I** | Objective | 一句话目标 |
-| **D** | (Scope/Requirements) | 范围 + 需求 |
-| **E** | (Acceptance Criteria) | 可验证验收标准 |
-| **A** | (Architecture) | 架构约束（技术栈/模块边界，可选） |
-| **L** | (Out of Scope) | 明确排除项 |
+| 字段 | 含义 |
+|:--|:--|
+| Objective | 一句话目标 |
+| Scope | 范围（included / excluded） |
+| Requirements | 功能 + 非功能需求 |
+| Architecture | 架构约束（技术栈/模块边界，可选） |
+| Implementation Constraints | 实现硬约束（语言/库/兼容/安全） |
+| Acceptance Criteria | 可验证成功条件 |
+| Out of Scope | 明确排除项 |
 
-为清晰起见，完整字段集固定如下：
+字段集固定如下：
 
 ```yaml
 type: ideal_contract

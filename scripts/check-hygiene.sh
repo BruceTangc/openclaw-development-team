@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check-hygiene.sh — 仓库卫生扫描（R9）
+# check-hygiene.sh — 仓库卫生扫描（Reviewer 步骤 5 Repository Review；迁移自 RR，见 protocols/review-adapter.md §7）
 #
 # v1.1：修复 untracked 临时文件漏检——
 # 原版只 `git ls-files`（仅 tracked），未跟踪的 debug.log / test.tmp / foo.pyc 会被漏掉。

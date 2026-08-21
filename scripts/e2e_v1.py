@@ -8,9 +8,9 @@ e2e_v1.py — V1 辅助验收/断言脚本（非完整 CASE 1-10 自动化 E2E R
 每个断言失败都会以非零退出码报告。
 
 用法：
-  python3 e2e_v1.py check-git-protection <repo>
+  python3 e2e_v1.py check-git-protection <repo> <baseline_file>
   python3 e2e_v1.py check-version <repo>
-  python3 e2e_v1.py check-changelog <repo>
+  python3 e2e_v1.py check-changelog <repo> <version>
   python3 e2e_v1.py check-release <repo> <tag>
 """
 import sys

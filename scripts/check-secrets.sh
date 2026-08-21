@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check-secrets.sh — 仓库 secrets 扫描（R8 Layer1，v1.0）
+# check-secrets.sh — 仓库 secrets 扫描（Reviewer 步骤 4 Security；迁移自 RR，见 protocols/review-adapter.md §7）
 #
 # v1.0：修复 F-004-1 子 shell 计数丢失 bug——
 # 第 1、2 节的 HITS 在管道 `| while` 子 shell 中自增不传导父 shell，

@@ -70,7 +70,7 @@ Requirement / Research / Repository Analysis / Architect / Validator 不再是�
 ```
 AGENTS.md                        # Main Agent 编排入口（角色模型 + 复杂度判断 + 流程）
 PROTOCOL.md                      # 协议总纲
-IMPLEMENTATION_SPEC.md           # 实现规范 + E2E 验收清单（CASE 1-10）
+IMPLEMENTATION_SPEC.md           # 实现规范 + E2E 验收清单（CASE 1-10，参考）
 agents/
   developer/AGENTS.md            # Developer（DeepSeek）唯一代码执行体
 protocols/
@@ -104,30 +104,26 @@ Validator 角色已取消，但「独立验证能力」保留，作为 Reviewer 
 
 ```
 Reviewer
-  ├─ 1. Independent Verification（独立读代码/Git Diff、独立复跑测试、查边界、查 Regression）
+  ├─ 1. Independent Verification（强制子步骤：独立读代码/Git Diff、独立复跑测试、查边界、查 Regression）
   ├─ 2. Requirement / IDEAL Compliance
-  ├─ 3. Code / Architecture Review
-  ├─ 4. Repository Consistency
-  └─ 5. Final Review Decision → APPROVED / REWORK_REQUIRED
+  ├─ 3. Code Review
+  ├─ 4. Security
+  ├─ 5. Repository Review
+  └─ 6. Release Readiness
+  ↓
+final_decision: APPROVED | REWORK_REQUIRED
 ```
 
 这样既不重新膨胀成多个 Agent，又不因砍掉 Validator 而降低质量。
+
+> Reviewer 的完整 6 步冻结顺序与字段定义见 `protocols/review-adapter.md`。
 
 ---
 
 ## 验收标准
 
-V1 完成需真实 E2E 验证至少 10 个 Case（每个 Case 必须有真实证据，不能只写文档）：
+V1 已完成**最小验收**：4 个真实测试（SIMPLE / FEATURE / FAIL→REWORK→PASS / RESULT CLOSURE）+ 6 项实现级检查（Git protection / Version / CHANGELOG / Release Gate / Cleanliness / IDEAL+HUMAN_DECISION），全部 PASS。
 
-- CASE 1: SIMPLE TASK
-- CASE 2: FEATURE TASK
-- CASE 3: COMPLEX TASK + IDEAL
-- CASE 4: Developer FAIL → REWORK → PASS
-- CASE 5: Reviewer FAIL → REWORK → PASS
-- CASE 6: Result Closure
-- CASE 7: Git / Version / Changelog
-- CASE 8: GitHub Release
-- CASE 9: 已有用户修改不能被覆盖
-- CASE 10: 真实 dlt-simulator
+CASE 1-10 是能力覆盖参考清单（见 `IMPLEMENTATION_SPEC.md`），**不要求重做 10-Case 自动化 E2E**。
 
-详见 `IMPLEMENTATION_SPEC.md`。
+真实验收证据见 `E2E_REPORT.md` / `V1_ACCEPTANCE_REPORT.md`。

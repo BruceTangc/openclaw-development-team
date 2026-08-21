@@ -1,5 +1,6 @@
 # templates/development-task.yaml — Development Task Contract
 task_id: DT-YYYYMMDD-001          # 全局唯一 id
+task_type: SIMPLE                 # SIMPLE | FEATURE | COMPLEX（见 protocols/routing.md）
 project: example-project          # 所属项目/仓库
 goal: 在临时测试项目中添加一个 hello 函数   # 一句话目标
 objective: 实现 hello() 并附带可运行的自测    # 可验证达成目标
