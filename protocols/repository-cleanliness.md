@@ -17,6 +17,8 @@
 | 7 | 文档同步 | 新增功能是否同步了 SKILL.md / README 等 |
 | 8 | 版本一致 | version 号与 CHANGELOG 一致 |
 
+> **自动化辅助（迁移自 RR）**：临时文件/大文件/构建产物用 `scripts/check-hygiene.sh <repo>`；secrets 用 `scripts/check-secrets.sh <repo>`。
+
 ## 2. 目标状态
 
 - working tree clean（除本次任务预期提交外）。

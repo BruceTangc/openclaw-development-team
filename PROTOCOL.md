@@ -9,14 +9,14 @@
 
 ## 1. 角色模型（冻结）
 
-只有**两个独立执行体**：
+只有**一个独立执行体（Developer）+ 一个 Workflow 阶段（Reviewer）**：
 
 | 执行体 | 形态 | 关键协议 |
 |:--|:--|:--|
 | Developer | DeepSeek sub-agent（sessions_spawn） | `agents/developer/AGENTS.md` |
-| Reviewer | 复用 repository-reviewer agent | `review-adapter.md` |
+| Reviewer | Workflow 内部阶段（Main Agent 执行，不 spawn） | `review-adapter.md` |
 
-其余能力（需求理解 / Repository 分析 / Research / Plan / IDEAL）全部是 **Development Workflow**（Main Agent 自己执行的步骤），不是独立角色、不 spawn。
+其余能力（需求理解 / Repository 分析 / Research / Plan / IDEAL / Reviewer 检查）全部是 **Development Workflow**（Main Agent 自己执行的步骤），不是独立角色、不 spawn。
 
 ---
 

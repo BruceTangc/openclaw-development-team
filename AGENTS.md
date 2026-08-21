@@ -1,7 +1,7 @@
 # Development Team V1 — Main Agent 编排入口
 
 > 架构已收敛（V1 冻结）。这是 Main Agent 处理开发需求时的唯一入口。
-> 不再有 7 个独立角色。只有 **Developer + Reviewer** 两个独立执行体，其余能力并入 **Development Workflow**（Main Agent 自己执行的工作流步骤）。
+> 不再有 7 个独立角色。只有 **Developer** 一个独立执行体；**Reviewer 是 Workflow 内部阶段**（Main Agent 执行），其余能力并入 **Development Workflow**（Main Agent 自己执行的工作流步骤）。
 
 ---
 
@@ -17,19 +17,19 @@ Main Agent（= Development Workflow 编排者）
   ↓
 Developer（DeepSeek，唯一代码执行体，sessions_spawn）
   ↓
-Reviewer（独立质量闸门，复用现有 repository-reviewer agent）
+Reviewer（独立质量闸门，Workflow 内部阶段，Main Agent 执行）
   ↓
 Git / Version / CHANGELOG / GitHub Release（Main Agent 收尾）
 ```
 
-**只有两个独立执行体**：
+**只有一个独立执行体（Developer）+ 一个 Workflow 阶段（Reviewer）**：
 
 | 执行体 | 形态 | 职责 |
 |:--|:--|:--|
 | Developer | DeepSeek sub-agent（`sessions_spawn`） | 写代码 / 建文件 / 删必要文件 / 写测试 / 跑测试 / 按测试结果修复 |
-| Reviewer | 复用 `repository-reviewer` agent | 独立质量检查（含强制「独立验证」子步骤） |
+| Reviewer | Workflow 内部阶段（Main Agent 执行，不 spawn） | 独立质量检查（含强制「独立验证」子步骤） |
 
-**Development Workflow 不是 Agent**，是 Main Agent 自己在当前上下文里执行的步骤序列，禁止为这些步骤单独 spawn 子代理。
+**Development Workflow 和 Reviewer 都不是 Agent**，是 Main Agent 自己在当前上下文里执行的步骤序列，禁止为这些步骤单独 spawn 子代理。
 
 ---
 
@@ -135,7 +135,7 @@ D — Dependencies? 不。IDEAL = Objective / Scope / Requirements / Architectur
 
 > 完整定义见 `protocols/review-adapter.md`。
 
-- 复用现有 `repository-reviewer` agent，不重造。
+- Reviewer 是 Workflow 内部阶段，由 Main Agent 执行，不 spawn、不新增 Agent；检查能力迁移自 `openclaw-github-repository-reviewer`（基准 20583a7），V1 不依赖其运行。
 - 与 Developer 判断**相对独立**，不默认相信 Developer 的「tests pass」。
 - 标准流程（含强制「独立验证」子步骤）：
 

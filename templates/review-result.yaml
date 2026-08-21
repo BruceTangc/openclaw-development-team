@@ -1,20 +1,56 @@
+# templates/review-result.yaml — Review Result（Reviewer Workflow 产出）
+
+# 字段冻结（11 项，见 protocols/review-adapter.md §5）
+# finding 结构从 RR schemas/finding.json 迁移，去 gate 化（见文末注释）
+
 type: review_result
 task_id: ""
 review_id: ""
+
+# Reviewer 执行状态：COMPLETED | INCOMPLETE | BLOCKED
+status: ""
+
+# 独立验证子步骤（强制）
 independent_verification:
-  performed: true           # 是否执行了独立验证子步骤
-  code_read: true           # 是否独立读取代码
-  git_diff_reviewed: true   # 是否独立审查 Git Diff
+  performed: true            # 是否执行独立验证
+  code_read: true            # 是否独立读取代码
+  git_diff_reviewed: true    # 是否独立审查 Git Diff
+
+# 独立复跑的测试
 tests_reproduced:
-  executed: []              # 独立复跑的测试
+  executed: []
   passed: []
   failed: []
-findings:
-  critical: []              # must fix → REWORK_REQUIRED
-  warning: []               # should fix
-  info: []                  # optional
-regression_status: ""       # NONE | MINOR | BLOCKING
-final_decision: ""          # APPROVED | REWORK_REQUIRED
-recommendation: ""
-evidence: []
-reviewer_session: ""
+
+# NONE | MINOR | BLOCKING
+regression_status: ""
+
+# 需求 / IDEAL 符合性
+requirement_compliance:
+  status: ""                 # PASS | FAIL | N/A
+  unmet: []                  # 未满足的验收条件
+
+# 分类 findings（每项结构见文末注释）
+code_findings: []            # 代码/架构 finding
+security_findings: []        # 安全 finding
+repository_findings: []      # 仓库整洁/一致性 finding
+
+# Release Gate 四前置条件（全部 true 才可 Release，见 protocols/release.md）
+release_gate:
+  tests_pass: false
+  independent_verification_pass: false
+  review_approved: false
+  repository_clean: false
+
+# APPROVED | REWORK_REQUIRED
+final_decision: ""
+
+# 必须修复项（final_decision=REWORK_REQUIRED 时非空）
+required_actions: []
+
+# ── finding 结构（从 RR schemas/finding.json 迁移，去 gate 化）───────────
+# 每项 finding 形如：
+#   severity: P0 | P1 | P2     # P0=安全/破坏性 → 直接 REWORK_REQUIRED；P1=必须修复；P2=建议
+#   file: <path>
+#   message: "..."
+#   required_action: "..."

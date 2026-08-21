@@ -14,12 +14,12 @@ Development Workflow（Main Agent 自己的步骤，不 spawn）
   ↓
 Developer（DeepSeek，sessions_spawn）
   ↓
-Reviewer（复用 repository-reviewer agent）
+Reviewer（Workflow 内部阶段，Main Agent 执行）
   ↓
 Git / Version / CHANGELOG / GitHub Release（Main Agent 收尾）
 ```
 
-**只有两个独立执行体**：Developer + Reviewer。
+**只有一个独立执行体（Developer）+ 一个 Workflow 阶段（Reviewer）**。
 
 ---
 
@@ -64,7 +64,7 @@ Development Team **不允许擅自改变 IDEAL**。缺失/冲突/歧义/无法�
 
 > 详见 `protocols/review-adapter.md`。
 
-- 复用 repository-reviewer agent，与 Developer 判断相对独立。
+- Reviewer 是 Workflow 内部阶段，由 Main Agent 执行，不 spawn；检查能力迁移自 `openclaw-github-repository-reviewer`（基准 20583a7），V1 不依赖其运行。
 - 强制「独立验证」子步骤（独立读代码/Git Diff、独立复跑关键测试、查边界、查 Regression、必要时加临时验证）。
 - 检查：IDEAL/Requirement、Acceptance Criteria、Implementation、Git Diff、Regression、Tests、Documentation、Unrelated Changes、Repository Consistency。
 - 结果：APPROVED / REWORK_REQUIRED。

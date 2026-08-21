@@ -14,6 +14,8 @@
 
 缺一不可。条件不满足 → 不 Release。
 
+> **快照一致性（R10 语义，迁移自 RR）**：Reviewer APPROVED 时的 working_tree_fingerprint 必须等于最终 commit 的树（`scripts/verify-tree.sh <repo> <fingerprint>` 校验）；期间工作树变化（含 untracked 增删改）→ INVALIDATED → 重新审核，不做「应该是小修改」假设。
+
 ## 2. Release 流程
 
 ```
