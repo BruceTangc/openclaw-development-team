@@ -48,6 +48,7 @@ PASS_COUNT=0
 FAIL=0
 WARN=0
 SKIP=0
+NA=0
 FAIL_MSGS=()
 WARN_MSGS=()
 
@@ -55,6 +56,22 @@ ok()   { PASS_COUNT=$((PASS_COUNT+1)); echo "  [PASS] $1"; }
 fail() { FAIL=$((FAIL+1)); FAIL_MSGS+=("$1"); echo "  [FAIL] $1"; }
 warn() { WARN=$((WARN+1)); WARN_MSGS+=("(warn) $1"); echo "  [WARN] $1"; }
 skip() { SKIP=$((SKIP+1)); echo "  [SKIP] $1 (需人工验证)"; }
+
+# NOT_APPLICABLE：明确不适用的检查项（不计 FAIL，也不冒充通过）
+na()   { NA=$((NA+1)); echo "  [N/A ] $1"; }
+
+# 检测 README 是否包含「可执行的安装/运行命令」
+# 命中： bash/python/node/docker 常见命令前缀 + 命令行提示符($或#) 或 markdown 代码块中的命令
+has_cli_cmd() { # $1=关键词（命令/工具名） $2=额外命令词缀（可选）
+  local kw="$1"; local extra="${2:-}"
+  if [[ "$SIZE" -eq 0 ]]; then return 1; fi
+  # 1) 代码块中或行首含命令提示符的命令行
+  if grep -qiE "[\$#>][[:space:]]*($kw|${extra})" README.md; then return 0; fi
+  # 2) markdown 围栏代码块中的命令（bash/shell/console 块）
+  if grep -qiE "^\`\`\`(bash|sh|shell|console|python|yaml)?[[:space:]]*$" README.md \
+     && grep -qiE "^[[:space:]]*($kw|\$[[:space:]]*$kw|pip[[:space:]].*$kw|npm[[:space:]].*$kw|git[[:space:]].*$kw)" README.md; then return 0; fi
+  return 1
+}
 
 # ---------- 类型推断 ----------
 detect_type() {
@@ -143,26 +160,99 @@ if [[ "$PROJECT_TYPE" == "openclaw-skill" ]]; then
 fi
 
 # ---------- 2. 安装 / 配置 / 使用 / 测试 文档 ----------
+# 设计：必要项缺失 → FAIL（与 PROJECT-DELIVERY-STANDARD 的「缺必要步骤 = REJECT」对齐）；
+#      明确不适用项 → N/A（不计 FAIL）；尽量验证 README 含「实际可执行命令」而非仅关键词。
 echo "--- [2] Documentation Coverage ---"
-doc_check() { # $1=项名 $2=关键词 $3=附加关键词(可选)
-  local label="$1"; local kw="$2"; local kw2="${3:-}"
-  if [[ "$SIZE" -eq 0 ]]; then
-    return  # README 不存在已在上方 fail
-  fi
-  if grep -qiE "$kw" README.md; then
-    if [[ -n "$kw2" ]] && ! grep -qiE "$kw2" README.md; then
-      warn "$label 章节关键词缺失: $kw2"
+if [[ "$SIZE" -eq 0 ]]; then
+  # README 不存在已在上方 fail，这里不再重复判定
+  echo "  [SKIP] README 不存在，文档覆盖检查跳过 (已在 [1] fail)"
+  SKIP=$((SKIP+1))
+else
+  # 2.1 安装（installation）— 所有可运行项目必要
+  case "$PROJECT_TYPE" in
+    generic|python|node|docker|openclaw-skill)
+      if grep -qiE "(^|### )?(installation|安装)" README.md || grep -qE "[\$[:space:]]*(git clone|pip install|npm (install|ci)|docker (build|compose))" README.md; then
+        # 含安装章节/关键词：再验证是否有可执行命令（$提示符 或 代码块裸命令）
+        if grep -qE "^[[:space:]]*\$[[:space:]]+(git clone|pip install|npm (install|ci)|uv |python -m venv|poetry )" README.md \
+           || grep -qE "^[[:space:]]*(git clone|pip install|npm (install|ci)|uv |python -m venv|poetry )" README.md \
+           || grep -qiE "(^|#)?[[:space:]]*(clone|install)[[:space:]]" README.md; then
+          ok "安装说明存在且含可执行命令"
+        else
+          # 有安装章节关键词但无实际命令
+          if grep -qiE "installation|安装" README.md; then
+            fail "安装章节存在但未给出可执行的安装命令（如 git clone / pip install / npm install）"
+          else
+            fail "缺少 installation 说明（含安装命令）"
+          fi
+        fi
+      else
+        fail "缺少 installation 说明（安装关键词+命令）"
+      fi
+      ;;
+    *) na "安装检查不适用 (type=$PROJECT_TYPE)" ;;
+  esac
+
+  # 2.2 配置（configuration）— 仅当项目有配置需求时必要；否则 N/A
+  if grep -qiE "(^|### )?(configuration|配置|environment|env|环境变量)" README.md \
+     || grep -qiE "ENV[[:space:]]|[[:space:]]--[a-z-]+[[:space:]]*[=<]" README.md \
+     || grep -qE "\.env|settings|config\." README.md; then
+    if grep -qiE "(^|### )?(configuration|配置)" README.md \
+       || grep -qiE "[[:space:]](--[a-z-]+|ENV[[:space:]]|\$.+)" README.md; then
+      ok "配置说明存在"
     else
-      ok "$label 章节存在"
+      fail "README 提及配置需求（env/参数），但缺少 configuration 说明"
     fi
   else
-    warn "$label 章节缺失（关键词: $kw）— 建议补充"
+    na "配置检查不适用（README 无配置需求迹象）"
   fi
-}
-doc_check "安装 (installation)"  "install"            "pip|npm|clone|setup|requirements|package.json"
-doc_check "配置 (configuration)" "config"             "env|config|environment|参数"
-doc_check "使用 (usage)"         "usage|使用|用法|run|运行|example" ""
-doc_check "测试 (testing)"       "test|测试"           ""
+
+  # 2.3 使用（usage）— 所有可运行项目必要，且应含可执行运行命令
+  case "$PROJECT_TYPE" in
+    generic|python|node|docker|openclaw-skill)
+      if grep -qiE "(^|### )?(usage|使用|用法|example|examples|运行|Example)" README.md; then
+        # 验证是否有实际运行命令
+        run_kw="$PROJECT_TYPE"
+        if [[ "$PROJECT_TYPE" == "python" ]]; then run_kw="python|pytest"; fi
+        if [[ "$PROJECT_TYPE" == "node" ]];   then run_kw="npm|node|yarn"; fi
+        if [[ "$PROJECT_TYPE" == "docker" ]]; then run_kw="docker"; fi
+        if [[ "$PROJECT_TYPE" == "openclaw-skill" ]]; then run_kw="openclaw|agent|SKILL|skill"; fi
+        if [[ "$PROJECT_TYPE" == "generic" ]]; then run_kw="run|./|bash|sh|start|example"; fi
+        # 判定运行命令：带 $ 提示符 / 代码块中的纯命令行 / 示例关键词
+        if grep -qE "^[[:space:]]*\$[[:space:]]+($run_kw)" README.md \
+           || grep -qE "^[[:space:]]*($run_kw)([[:space:]-].*|$)" README.md \
+           || grep -qiE "example|示例" README.md; then
+          ok "使用说明存在且含可执行命令/示例"
+        else
+          fail "使用说明存在但缺少可执行的运行命令/示例"
+        fi
+      else
+        fail "缺少 useage/example（使用说明）"
+      fi
+      ;;
+    *) na "使用检查不适用 (type=$PROJECT_TYPE)" ;;
+  esac
+
+  # 2.4 测试（testing）— 仅当项目包含测试（文件/依赖/脚本）时必要；否则 N/A
+  has_tests=0
+  case "$PROJECT_TYPE" in
+    python) [[ -d tests || -f test_*.py || -f tests.py || -d test ]] && has_tests=1 ;;
+    node)   [[ -d test || -d tests || -f *.test.js || -f *.spec.js ]] && has_tests=1 ;;
+    generic|docker|openclaw-skill)
+      # 松散检查：存在 test* 目录/文件视为有测试
+      [[ -n "$(find . -maxdepth 2 -iname 'test*' 2>/dev/null | head -1)" ]] && has_tests=1 ;;
+  esac
+  if [[ "$has_tests" -eq 1 ]]; then
+    if grep -qiE "(^|### )?(testing|test|测试)" README.md && grep -qiE "\$[[:space:]]*(pytest|npm test|npm run test|python -m |test|make test)" README.md; then
+      ok "测试说明存在且含可执行测试命令"
+    elif grep -qiE "(^|### )?(testing|test|测试)" README.md; then
+      fail "仓库含测试文件，但 README 未给出可执行的测试命令"
+    else
+      fail "仓库含测试文件，但缺少 testing 说明"
+    fi
+  else
+    na "测试检查不适用（未发现测试文件）"
+  fi
+fi
 
 # ---------- 3. 依赖 / 构建文件（按类型） ----------
 echo "--- [3] Dependency / Build File ---"
@@ -280,6 +370,7 @@ echo "=============================================="
 echo "  PASS : $PASS_COUNT"
 echo "  FAIL : $FAIL"
 echo "  WARN : $WARN"
+echo "  N/A  : $NA (明确不适用)"
 echo "  SKIP : $SKIP (人工验证项)"
 if [[ ${#FAIL_MSGS[@]} -gt 0 ]]; then
   echo ""
