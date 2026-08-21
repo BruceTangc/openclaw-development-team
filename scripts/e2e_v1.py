@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
-E2E v1 验证脚本（CASE 1-10 的可复跑断言器）
+e2e_v1.py — V1 辅助验收/断言脚本（非完整 CASE 1-10 自动化 E2E Runner）
 
-本脚本不 mock、不伪造结果。它只对真实仓库的真实状态做断言，
-供 E2E 报告引用真实证据。每个断言失败都会以非零退出码报告。
+本脚本只对 Git / Version / CHANGELOG / Release / Protection 等环节做辅助断言，
+不是完整的 CASE 1-10 自动化 E2E Runner。不 mock、不伪造结果，
+只对真实仓库的真实状态做断言，供验收报告引用真实证据。
+每个断言失败都会以非零退出码报告。
 
 用法：
   python3 e2e_v1.py check-git-protection <repo>

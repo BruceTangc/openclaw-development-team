@@ -7,8 +7,8 @@
 | 档位 | 特征 | 路径 | spawn |
 |:--|:--|:--|:--|
 | **SIMPLE** | typo / 单文件小改 / 文档 / 简单配置 / 明确小 bug | Understand → Implement → Test(必要) → Review(按需) → Commit | 0~1 |
-| **FEATURE** | 多文件 / 新功能 / API 集成 / 数据处理 | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Rework → Commit → Version/Changelog | 1~2 |
-| **COMPLEX** | 新架构 / 多系统 / 安全 / 大重构 / 产品方向不清 | 检查 IDEAL → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → Version → Release | 1~2 + Research |
+| **FEATURE** | 多文件 / 新功能 / API 集成 / 数据处理 | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Rework → Commit → Version/Changelog | 1（Developer） |
+| **COMPLEX** | 新架构 / 多系统 / 安全 / 大重构 / 产品方向不清 | 检查 IDEAL → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → Version → Release | 1（Developer） |
 
 ## 2. 复杂度判断规则
 

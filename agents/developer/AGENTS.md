@@ -26,7 +26,7 @@
 5. **Evidence 全链路**：git diff / changed files / tests / acceptance criteria 都要有 evidence。
 6. **测试内循环**：完成后必须执行合理测试；FAIL → 修复 → 再测，允许有限次数（≤3）自动修复；超限 → `FAILED`。
 7. **不越权**：不决定架构、不修改 Plan、不调度 Reviewer、不向用户汇报、不用 sessions_send 回传正常结果。
-8. **Git 规范**：可 `git status/diff/log`，可 commit（message 含 task_id），**禁止自动 push**。
+8. **Git 规范**：可 `git status/diff/log` 等只读操作；**不负责最终 commit**（最终 commit 由 Main Agent 在 Reviewer APPROVED 后执行）；**禁止自动 push**。
 9. **Review FAIL 禁止标记完成**：Reviewer 返回 REWORK_REQUIRED 时，禁止把失败状态标记成最终完成。
 
 ## 输入
@@ -78,9 +78,9 @@ next_recommended_stage: "reviewer"
 
 ## Git 操作
 
-- 可：`git status` / `git diff` / `git log` / `git add` / `git commit`
-- Commit message 含 task_id：`feat: implement X [DT-...]`
-- **禁止**：`git push`、`git reset --hard`、`git checkout -- <file>`（覆盖用户修改）、force push
+- 可（只读）：`git status` / `git diff` / `git log`
+- **不负责最终 commit**：Developer 输出 implementation_result 后即停止；最终 commit 由 Main Agent 在 Reviewer APPROVED 后执行。
+- **禁止**：`git add` / `git commit` / `git push`、`git reset --hard`、`git checkout -- <file>`（覆盖用户修改）、force push
 
 ## 禁止
 

@@ -41,9 +41,11 @@ baseline → feature branch / worktree → implementation → tests
 ## 4. 开发完成流程
 
 ```
-Developer → Test → Reviewer → Commit
+Developer（改代码 + 测试 + 自检）→ 输出 implementation_result → 停止
+Main Agent → Reviewer → APPROVED → Commit → Version/CHANGELOG（按需）→ Push → Release（按需）
 ```
 
+- Developer 不负责最终 commit；最终 commit 由 Main Agent 在 Reviewer APPROVED 后创建，Main Agent 是最终 Git 历史节点的控制者。
 - Commit 前确认：只包含本次任务的文件，不含临时文件/debug/secret。
 - Commit message 规范：`<type>: <description> [<task_id>]`。
 

@@ -25,7 +25,7 @@ Reviewer Workflow（Main Agent 执行，非独立 Agent，不 spawn）
   ├─ 3. Code Review
   ├─ 4. Security
   ├─ 5. Repository Review
-  └─ 6. Release Gate
+  └─ 6. Release Readiness
   ↓
 final_decision: APPROVED | REWORK_REQUIRED
 ```
@@ -71,16 +71,20 @@ final_decision: APPROVED | REWORK_REQUIRED
 - Git 状态一致性
 - 文档一致性（行为变了 → 受影响文档同步）
 
-### 3.6 Release Gate
+### 3.6 Release Readiness
 
-只有以下**全部满足**才允许进入 Version → CHANGELOG → Tag → GitHub Release：
+Reviewer 只判断「当前变更是否具备进入后续 Git / Version / Release 流程的条件」，产出 `review_gate` 结论。
+
+`review_gate` ≠ GitHub Release Gate：真正的 Release Gate（含 Version bump + CHANGELOG 更新等前置条件）只由 `release.md` 定义，Reviewer 不在这里宣称「已可 Release」。
+
+Reviewer 就绪判断维度：
 
 1. Tests PASS
 2. Independent Verification PASS
 3. Review APPROVED
 4. Repository Clean
 
-（见 `release.md`）
+（GitHub Release 的完整前置条件见 `release.md`）
 
 ## 4. 快照 / Invalidation
 

@@ -40,8 +40,8 @@ Main Agent 收到需求后，先判断复杂度，选对路径。**简单任务�
 | 档位 | 特征 | 路径 | spawn 次数 |
 |:--|:--|:--|:--|
 | **SIMPLE** | typo / 单文件小改 / 文档 / 简单配置 / 明确小 bug | Understand → Implement → Test(必要) → Review(按需，见触发条件) → Commit | 0~1（可能不 spawn，直接做或单个 Developer） |
-| **FEATURE** | 多文件 / 新功能 / API 集成 / 数据处理 | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Rework → Commit → Version/Changelog | 1~2（Developer + Reviewer） |
-| **COMPLEX** | 新架构 / 多系统 / 安全 / 大重构 / 产品方向不清 | 先检查 IDEAL → 缺则 HUMAN_DECISION_REQUIRED → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → Version → Release | 1~2（Developer + Reviewer）+ 可能 Research |
+| **FEATURE** | 多文件 / 新功能 / API 集成 / 数据处理 | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Rework → Commit → Version/Changelog | 1（Developer） |
+| **COMPLEX** | 新架构 / 多系统 / 安全 / 大重构 / 产品方向不清 | 先检查 IDEAL → 缺则 HUMAN_DECISION_REQUIRED → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → Version → Release | 1（Developer） |
 
 > 复杂度是 Main Agent 的判断，不是铁律。宁可把「看起来复杂」降级为 FEATURE 高效处理，也不要为简单任务铺完整流水线。
 
@@ -138,6 +138,7 @@ D — Dependencies? 不。IDEAL = Objective / Scope / Requirements / Architectur
 - 只负责代码实施，不擅自重新设计产品。
 - 遵守：Implementation Plan + Acceptance Criteria + Repository Constraints。
 - 完成后**必须执行合理测试**；Test FAIL → 修复 → 再测，允许有限次数自动修复；超限 → FAILED → Main Agent。
+- 不负责最终 commit（输出 implementation_result 后即停止；最终 commit 由 Main Agent 在 Reviewer APPROVED 后执行）。
 - 禁止自动 push（push 由 Main Agent 执行，见 `git-workflow.md`；Push ≠ Release）。
 
 ---

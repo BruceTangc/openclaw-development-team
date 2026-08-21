@@ -92,7 +92,7 @@ protocols/
   human-decision.md              # Human Decision 触发条件
   main-agent-integration.md      # Production Integration
 templates/                       # 收敛后的 YAML 模板
-scripts/                         # E2E 脚本（CASE 1-10）
+scripts/                         # V1 辅助验收/断言脚本（Git/Version/Changelog/Release/Protection）
 .tasks/                          # 工程 Artifact 持久化
 ```
 
