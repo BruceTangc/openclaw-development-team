@@ -112,13 +112,20 @@ if field_present "memory_write"; then p "Memory/State: memory_write 声明"; els
 
 # 5. Delegation（Multi-Agent 适用场景必须）——skill/agent 生成物一般适用
 has_delegation=0
+decl_nomulti=0
 for f in "${DECL_FILES[@]}"; do
   if grep -qE '^[[:space:]]*delegation[[:space:]]*:' "$f" 2>/dev/null; then has_delegation=1; break; fi
+done
+# 识别「显式声明独立/单 agent/无 Multi-Agent 场景」→ delegation 合法 N/A
+for f in "${DECL_FILES[@]}"; do
+  if grep -qiE '独立|单 ?agent|不 ?被 ?子 ?agent|无 ?Multi-?Agent|无 ?子 ?代理|standalone|not.*delegat|independent' "$f" 2>/dev/null; then decl_nomulti=1; break; fi
 done
 if [[ "$has_delegation" -eq 1 ]]; then
   p "Delegation: delegation 块声明"
 elif [[ "$TYPE" == "project" && -z "$AGENTS_MD" && -z "$SKILL_MD" ]]; then
   p "Delegation: NOT_APPLICABLE（纯项目，无 Multi-Agent 语义）"
+elif [[ "$decl_nomulti" -eq 1 ]]; then
+  p "Delegation: NOT_APPLICABLE（显式声明独立/单 agent、无 Multi-Agent 场景）"
 else
   f "Delegation: 缺少 delegation（Multi-Agent 适用场景必须）"
 fi
@@ -199,11 +206,19 @@ else
 fi
 
 # Execution Record（生成物如声明了 execution record，须含规定节点）
-ER_FILE="$(find "$ARTIFACT_DIR" -maxdepth 3 -iname '*execution-record*' -o -iname '*execution_record*' 2>/dev/null | head -1)"
+ER_FILE="$(find "$ARTIFACT_DIR" -maxdepth 3 -type f \( -iname '*execution-record*' -o -iname '*execution_record*' \) 2>/dev/null | head -1)"
 if [[ -n "$ER_FILE" ]]; then
-  required_nodes=(context goal permission execution verification)
+  # 规定节点：必须在 steps: 下以「两空格缩进的 key:」实际列出（排除注释/普通字样匹配）
+  required_nodes=(context goal_task permission execution verification)
+  er_fail=0
   for node in "${required_nodes[@]}"; do
-    grep -qiE "$node" "$ER_FILE" 2>/dev/null || { echo "  [FAIL] Execution Record 缺失节点: $node"; FAIL=$((FAIL+1)); }
+    # 匹配 steps 下缩进的节点 key（允许 context/goal_task 等）
+    if grep -qE "^[[:space:]]{2}${node}(_task)?[[:space:]]*:" "$ER_FILE" 2>/dev/null; then
+      :
+    else
+      echo "  [FAIL] Execution Record 缺失规定节点: ${node}"
+      FAIL=$((FAIL+1)); er_fail=1
+    fi
   done
   grep -qiE 'completed|skipped|conditional' "$ER_FILE" 2>/dev/null && p "Execution Record: status 三态可用" || w "Execution Record: 无 status 三态标注"
 else
