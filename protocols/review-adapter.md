@@ -5,6 +5,26 @@
 > 但 Reviewer 本身不依赖该独立项目运行。
 > 迁移原则：只迁 Development Team 真正需要的能力，不复制历史垃圾。
 
+## 0. Agent OS Protocol 继承声明（P0 Compliance）
+
+Reviewer 是 Development Team 的质量闸门，运行在以下协议层级之上，**继承而非覆盖** Agent OS 基础协议：
+
+```
+OpenClaw Runtime
+  → Agent OS
+    → X Agent OS Protocol（Core Protocol v1.3 / Architecture Contract v1.6 / MA-1.1 · ccef093）
+      → Development Team 开发规范（PROTOCOL.md）
+        → 本 review-adapter.md（Reviewer 执行契约）
+```
+
+- **Agent Identity**：Reviewer 是 Development Workflow 内部阶段，由 Main Agent 自己执行，不 spawn 独立 Agent。
+- **Delegation Chain**：Reviewer 的审查权限来自 Main Agent 委派，遵循 Agent OS Multi-Agent 委托规则；它只审查 Development Team 交付物，不继承 Main Agent 其他能力。
+- **Permission Gate**：Reviewer 只读遍历交付物 + 在受控临时目录（mktemp）执行验证，归 L0/L1；任何 L2+（发布/外发/生产变更）由 `release.md` 显式 Gate，Reviewer 不在这里授权。
+- **Verification Levels**：Reviewer 的独立验证遵循 Agent OS V0-V4 分级（独立复核高于 Developer 自测）。
+- **Protocol Compliance**：见 §3.7。Reviewer 必须验证交付物的 `x-agent-os` 声明 + Protocol Contract + Execution Record，FAIL → REJECT（禁止仅因功能测试通过而 APPROVE）。
+
+---
+
 ## 1. 定位
 
 Reviewer 与 Developer 的判断**相对独立**。不默认相信 Developer 的「tests pass」，必须自己复核关键结果。
@@ -23,9 +43,11 @@ Reviewer Workflow（Main Agent 执行，非独立 Agent，不 spawn）
   ├─ 1. Independent Verification（强制子步骤）
   ├─ 2. Requirement / IDEAL Compliance
   ├─ 3. Code Review
+  ├─ 3a. OpenClaw Native Compliance（涉 OpenClaw 能力时）
   ├─ 4. Security
-  ├─ 5. Repository Review（含 5a GitHub Hygiene Review、5b Stranger User Audit，项目交付时强制）
-  └─ 6. Release Readiness
+  ├─ 5. Repository Review（含 5a GitHub Hygiene、5b Stranger User Audit）
+  ├─ 6. Release Readiness
+  └─ 7. Protocol Compliance（强制子步骤，见 §3.7；FAIL → REJECT → Release BLOCKED）
   ↓
 final_decision: APPROVED | REWORK_REQUIRED
 ```
@@ -122,8 +144,38 @@ Reviewer 就绪判断维度：
 2. Independent Verification PASS
 3. Review APPROVED
 4. Repository Clean
+5. **Protocol Compliance PASS**（§3.7；FAIL 则 `review_gate` 必须为 BLOCK）
 
 （GitHub Release 的完整前置条件见 `release.md`）
+
+### 3.7 Protocol Compliance（强制子步骤，P0）
+
+> 依据 Agent OS `SKILL-INTEGRATION.md` + `PROTOCOL-CHECKLIST.md` + Execution Record schema。
+> **Development Team 不新建独立 protocol-compliance Skill**，复用 Agent OS 现有标准作为 Reviewer 强制子步。
+
+当**交付物是 Skill / Agent / Project**（含生成物声明 `x-agent-os` 或从 Development Team 产出）时，以下检查**强制执行，不可跳过**。若任务不生成 Skill/Agent/Project（仅改既有业务代码），标记 `protocol_compliance.status = not_applicable`（合法 N/A）。
+
+Reviewer 必须确认：
+
+1. **是否存在 `x-agent-os` 声明**：交付物（SKILL.md/_meta.json/AGENTS.md/README）是否声明 `x-agent-os` 接入块。
+2. **是否符合当前 Protocol**：`protocol_version` 是否等于 Agent OS 当前版本（v1.3）；`layer`/`path`/`entry_mode`/`requires` 是否符合 `SKILL-INTEGRATION.md` 定义，字段是否虚构。
+3. **是否满足适用的 checklist**：逐项对照 Agent OS `PROTOCOL-CHECKLIST.md` 的最低检查项（Identity / Context / Lifecycle / Memory-State / Delegation / Handoff / Communication / Error Handling / Recovery / Permissions / Skill Discovery / Installation / Versioning / Multi-Agent Compatibility）。
+4. **N/A 是否合理**：不适用的项须显式标 N/A 并说明理由；无理由的 N/A → 视为未满足（FAIL）。
+5. **是否经过规定节点**：交付物的 Execution Record（如适用）能否证明实际经过规定节点（context/goal/permission/execution/verification）。
+6. **Execution Record 能否证明实际流程**：某节点声明 completed 但无证据 → 按「未经过」处理（FAIL）；条件性跳过须带 note。
+
+**判定规则（对齐 Agent OS Contract）：**
+
+- 应经过但未经过 → **FAIL**
+- Contract 条件性跳过且注明 → 不 FAIL
+- 合法 N/A（清晰标注理由）→ 不计
+- 缺少 `x-agent-os` 声明（适用场景）→ **FAIL**
+- 缺少 delegation（Multi-Agent 适用场景）→ **FAIL**
+- Execution Record 缺失规定节点 → **FAIL**
+
+**Protocol Compliance FAIL → 必须 REJECT**，禁止仅因为功能测试通过而 APPROVE，Release 必须 BLOCKED。
+
+输出进 `templates/review-result.yaml` 的 `protocol_compliance` 字段（见 §5）。
 
 ## 4. 快照 / Invalidation
 

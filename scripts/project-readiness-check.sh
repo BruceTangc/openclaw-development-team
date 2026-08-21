@@ -396,6 +396,28 @@ echo "--- [8] Quick Start / Test Executability (deferred) ---"
 skip "Quick Start 实际可执行性 — 需 Test & Runtime Validator / Reviewer 实测"
 skip "README 之外的隐含知识检查 — 需 Reviewer Stranger User Audit"
 
+# ---------- 9. Protocol Compliance（P0，Author 侧自检） ----------
+# 依据 Agent OS SKILL-INTEGRATION + PROTOCOL-CHECKLIST。最终判定仍由 Reviewer §3.7 负责，
+# 本步是 Author 侧前置自检：尽早发现问题，不替代 Reviewer Release Decision。
+if command -v "$SCRIPT_DIR/protocol-compliance-check.sh" >/dev/null 2>&1 || [[ -x "$SCRIPT_DIR/protocol-compliance-check.sh" ]]; then
+  echo "--- [9] Protocol Compliance (Author-side self-check, P0) ---"
+  if bash "$SCRIPT_DIR/protocol-compliance-check.sh" "$PROJECT_DIR" "$PTYPE" >/tmp/dtpcc.out 2>&1; then
+    ok "Protocol Compliance 通过（exit 0）"
+  else
+    rc=$?
+    # rc=1 FAIL（阻断）；rc=2 WARN（需 Reviewer 确认，不自动阻断 Author 侧但提示）；rc=3 用法错误
+    if [[ "$rc" -eq 1 ]]; then
+      fail "Protocol Compliance FAIL — 生成物不符合 X Agent OS Protocol，Reviewer 必须 REJECT"
+    else
+      warn "Protocol Compliance 未 PASS（exit $rc）— 需 Reviewer §3.7 确认"
+    fi
+    cat /tmp/dtpcc.out | sed 's/^/    /'
+  fi
+else
+  warn "protocol-compliance-check.sh 不存在或不可执行 — Protocol Compliance 自检未运行（Reviewer 仍须执行 §3.7）"
+fi
+rm -f /tmp/dtpcc.out
+
 # ---------- 汇总 ----------
 echo ""
 echo "=============================================="

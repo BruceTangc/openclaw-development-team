@@ -72,6 +72,42 @@ openclaw_compliance:
   # finding 结构与 code_findings 一致：severity / file / message / required_action
   findings: []
 
+# Protocol Compliance（交付物为 Skill/Agent/Project 时强制，见 review-adapter.md §3.7）
+# 非生成物（仅改既有业务代码）标 NOT_APPLICABLE 合法。
+protocol_compliance:
+  status: ""                 # PASS | FAIL | NOT_APPLICABLE（FAIL → REJECT，Release BLOCKED）
+  artifact_type: ""          # skill | agent | project | not_applicable
+  agent_os_protocol: "v1.3"  # 对齐当前 Agent OS Protocol
+  checks:
+    - item: "x-agent-os 声明存在"       # Identity
+      result: ""              # PASS | FAIL | N/A
+      note: ""
+    - item: "protocol_version 匹配当前 Protocol (v1.3)"
+      result: ""
+      note: ""
+    - item: "layer/path/entry_mode/requires 符合 SKILL-INTEGRATION"
+      result: ""
+      note: ""
+    - item: "无虚构字段（不自行发明协议字段）"
+      result: ""
+      note: ""
+    - item: "适用 checklist 逐项满足（PROTOCOL-CHECKLIST 14 项）"
+      result: ""
+      note: ""
+    - item: "N/A 项有合理理由"
+      result: ""
+      note: ""
+    - item: "Multi-Agent 适用场景声明 delegation"
+      result: ""
+      note: ""
+    - item: "Execution Record 能证明经过规定节点"
+      result: ""
+      note: ""
+    - item: "经过规定节点（context/goal/permission/execution/verification）"
+      result: ""
+      note: ""
+  blocking_reason: []        # FAIL 时的阻断原因
+
 # ── finding 结构（从 RR schemas/finding.json 迁移，去 gate 化）───────────
 # 每项 finding 形如：
 #   severity: P0 | P1 | P2     # P0=安全/破坏性 → 直接 REWORK_REQUIRED；P1=必须修复；P2=建议

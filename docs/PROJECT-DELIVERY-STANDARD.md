@@ -141,6 +141,46 @@ Developer 只给 `IMPLEMENTATION COMPLETE`；只有全部验证 + Reviewer Stran
 
 ---
 
+## 9a. 生成物 Protocol Compliance（P0，强制）
+
+> 依据 Agent OS `SKILL-INTEGRATION.md` + `PROTOCOL-CHECKLIST.md` + Execution Record。
+> Development Team 不新建独立 protocol-compliance Skill，复用 Agent OS 现有标准。
+
+Development Team 产出的任何 **Skill / Agent / Project**，在 Reviewer 判定前必须经过 **Protocol Compliance**。
+
+### 最低检查项（对齐 Agent OS PROTOCOL-CHECKLIST，不适用的必须显式标 N/A）
+
+| # | 检查项 | 要求 | N/A 判定 |
+|:--|:--|:--|:--|
+| 1 | Identity | 声明身份 + `x-agent-os.layer` | 所有 |
+| 2 | Context | requires 节点矩阵声明 | 简单生成物可 N/A |
+| 3 | Lifecycle | 遵循 Fast/Full Path | 无任务型生成物 N/A |
+| 4 | Memory/State | memory_write=governed 或显式 N/A | 无状态生成物 N/A |
+| 5 | Delegation | Multi-Agent 场景声明 `delegation` | 不被子 agent 调用 N/A |
+| 6 | Handoff | 结果回传路径明确 | N/A |
+| 7 | Communication | 用 OpenClaw 原生 | N/A |
+| 8 | Error Handling | 失败处理路径 | 内置型 N/A |
+| 9 | Recovery | retry/escalate 路径 | N/A |
+| 10 | Permissions | `requires.permission`（L2+ 一律 true） | 纯 L0-L1 可 N/A |
+| 11 | Skill Discovery | `x-agent-os` + frontmatter name/description | 非 skill N/A |
+| 12 | Installation | 可安装性 | 非 skill N/A |
+| 13 | Versioning | frontmatter version / 可版本化 | N/A |
+| 14 | Multi-Agent compat | delegation + provenance | 单 agent N/A |
+
+**原则：不强制不存在的能力；不适用的标 N/A 并说明理由。**
+
+### 判定规则（对齐 Agent OS Contract）
+
+- 应经过但未经过 → **FAIL**
+- Contract 条件性跳过且注明 → 不 FAIL
+- 合法 N/A（清晰标注理由）→ 不计
+- 缺少 `x-agent-os` 声明（适用场景）→ **FAIL**
+- 缺少 delegation（Multi-Agent 适用场景）→ **FAIL**
+- Execution Record 缺失规定节点 → **FAIL**
+- **禁止自行增加 Agent OS 未定义的协议要求**（不得发明新字段/新强制项）
+
+**Protocol Compliance：<skill|agent|project> 全被判定 FAIL → 交付物不达标，Reviewer 必须 REJECT，Release 必须 BLOCKED。**
+
 ## 10. 多 Agent 环境（OpenClaw Multi-Agent）
 
 Development Team 默认属于 **Main Agent / Team-level capability**：

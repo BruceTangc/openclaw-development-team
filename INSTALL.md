@@ -224,23 +224,29 @@ gh auth login
 
 ## 文件结构（安装后）
 
+> ⚠️ 以下路径为**默认位置示意**，实际路径由 `install.sh` 动态解析（`openclaw skills check` 官方 API），
+> 不硬编码。你的 Main Agent workspace 与 shared managed skills 目录可能与下图不同。
+> 若你显式指定 `--workspace <path>` / `--main-agent <id>`，以上路径按实际目标变化，以 install.sh 输出为准。
+
 ```
-~/.openclaw/workspace/
-├── AGENTS.md                          # 你的 Agent 入口（不被覆盖）
-├── SOUL.md                            # 你的 Agent 人格（不被覆盖）
-├── MEMORY.md                          # 你的长期记忆（不被覆盖）
+<Main Agent workspace>/             # 默认约 ~/.openclaw/workspace/<agent-id>/，以实际解析为准
+├── AGENTS.md                       # 你的 Agent 入口（不被覆盖）
+├── SOUL.md                         # 你的 Agent 人格（不被覆盖）
+├── MEMORY.md                       # 你的长期记忆（不被覆盖）
 ├── skills/
 │   └── development-team/
-│       └── SKILL.md                   # DT Skill 入口（安装器创建）
-└── openclaw-development-team/         # DT 仓库主体（安装器创建）
-    ├── AGENTS.md                      # DT 编排入口
-    ├── PROTOCOL.md                    # 协议总纲
-    ├── IMPLEMENTATION_SPEC.md         # 实现规范
-    ├── protocols/                     # 15 个协议文件
-    ├── scripts/                       # 辅助脚本
-    ├── templates/                     # YAML 模板
+│       └── SKILL.md                # DT Skill 入口（安装器创建）
+└── openclaw-development-team/      # DT 仓库主体（安装器创建）
+    ├── AGENTS.md                   # DT 编排入口
+    ├── PROTOCOL.md                 # 协议总纲
+    ├── IMPLEMENTATION_SPEC.md      # 实现规范
+    ├── protocols/                  # 15 个协议文件
+    ├── scripts/                    # 辅助脚本
+    ├── templates/                  # YAML 模板
     ├── agents/
     │   └── developer/
-    │       └── AGENTS.md              # Developer Agent 定义
-    └── install.sh / uninstall.sh      # 安装/卸载器
+    │       └── AGENTS.md           # Developer Agent 定义
+    └── install.sh / uninstall.sh   # 安装/卸载器
 ```
+
+> **shared managed skills**（所有本机 agent 可见）：默认 `~/.openclaw/skills/development-team/`（见 §安装方式一）。
