@@ -1,0 +1,24 @@
+{
+  "case": "CASE 3 - COMPLEX + IDEAL (missing IDEAL -> HUMAN_DECISION_REQUIRED)",
+  "task_id": "DT-20260821-E2E-C3",
+  "task_type": "COMPLEX",
+  "routing_input": "给 dlt-simulator 增加基于机器学习的号码预测系统，接入真实历史数据 API，支持模型训练和实时预测",
+  "routing_judgment": {
+    "complexity": "COMPLEX",
+    "reason": "新架构（ML 模型层）+ 多系统集成（外部数据 API）+ 产品方向不清（训练什么模型、预测目标未定义）"
+  },
+  "ideal_check": "MISSING",
+  "missing_fields": [
+    "objective 不清晰（预测目标/模型选型未定）",
+    "acceptance_criteria 缺失",
+    "architecture 缺失（无 ML 技术栈约束）"
+  ],
+  "decision": "HUMAN_DECISION_REQUIRED",
+  "spawn_count": 0,
+  "branch": "N/A (stopped before any repo mutation)",
+  "before_commit": "4e88e47cc25bc7b987c9e60bcc145c88d9f9529f",
+  "after_commit": "4e88e47cc25bc7b987c9e60bcc145c88d9f9529f",
+  "changed_files": [],
+  "result": "PASS",
+  "note": "路由层正确识别 COMPLEX 且缺 IDEAL，在 spawn/改代码前即停下回报 HUMAN_DECISION_REQUIRED，未做任何 repo 变更"
+}

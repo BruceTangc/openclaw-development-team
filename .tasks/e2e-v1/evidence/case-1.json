@@ -1,0 +1,15 @@
+{
+  "case": "CASE 1 - SIMPLE TASK",
+  "task_id": "DT-20260821-E2E-C1",
+  "task_type": "SIMPLE",
+  "branch": "main",
+  "before_commit": "8fec50c56f8e7fc5ca2a744d6e6cb716c539b4f5",
+  "after_commit": "4e88e47cc25bc7b987c9e60bcc145c88d9f9529f",
+  "changed_files": [
+    "dlt-simulator/SKILL.md"
+  ],
+  "spawn_count": 0,
+  "description": "SKILL.md strategy table was missing even_filter entry (exists in generator.py _KNOWN_STRATEGIES). Main Agent direct edit.",
+  "tests": "N/A (docs only)",
+  "result": "PASS"
+}

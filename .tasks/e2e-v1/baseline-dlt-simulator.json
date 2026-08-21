@@ -1,0 +1,26 @@
+{
+  "repo": "/root/.openclaw/workspace/_ref-tts-public",
+  "branch": "main",
+  "head": "8fec50c56f8e7fc5ca2a744d6e6cb716c539b4f5",
+  "head_msg": "8fec50c feat: multi-strategy combination via '+' in compute_weights",
+  "modified": [
+    "dlt-simulator/data/history_cache.json"
+  ],
+  "untracked": [
+    "dlt-simulator/DEVELOPMENT_RESULT_E2E2.md",
+    "dlt-simulator/TASK_CONTRACT_DT-20260821-001.md",
+    "dlt-simulator/TASK_CONTRACT_DT-20260821-002.md"
+  ],
+  "dirty_files": [
+    "dlt-simulator/data/history_cache.json",
+    "dlt-simulator/DEVELOPMENT_RESULT_E2E2.md",
+    "dlt-simulator/TASK_CONTRACT_DT-20260821-001.md",
+    "dlt-simulator/TASK_CONTRACT_DT-20260821-002.md"
+  ],
+  "file_hashes": {
+    "dlt-simulator/data/history_cache.json": "efb56badc40c6bbce4047954d570d060f9bb6184",
+    "dlt-simulator/DEVELOPMENT_RESULT_E2E2.md": "3e6c294a6ba88aa5aa82baa16303516b145457c6",
+    "dlt-simulator/TASK_CONTRACT_DT-20260821-001.md": "4dd874797eeb4a65ca6e3c88e7dd83f0581144ad",
+    "dlt-simulator/TASK_CONTRACT_DT-20260821-002.md": "8b1119984f3f8f378d7b94f370c058ae801763fa"
+  }
+}

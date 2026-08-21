@@ -1,0 +1,35 @@
+{
+  "test": "测试 4 - RESULT CLOSURE（结果可靠收口回 Main Agent）",
+  "mechanism": "push-based auto-announce：sub-agent 完成后事件自动投递回 Main Agent，全程不轮询（禁止 polling）",
+  "evidence_repeat_filter": {
+    "developer": {
+      "runId": "0b02cdc1-15c5-43b4-a96a-c5dfce52677c",
+      "childSessionKey": "agent:main:subagent:74101b00-90b0-4a91-ac59-dbcbce4012fa",
+      "delivery": "Internal task completion event 自动到达"
+    },
+    "reviewer": {
+      "runId": "8b1bbef7-efd8-4d60-8fa3-2d685cf6a146",
+      "childSessionKey": "agent:repository-reviewer:subagent:dad1ed4d-127d-46b1-a670-8c9dc7f23be1",
+      "review_id": "RVW-20260821-001",
+      "delivery": "completion event 自动到达，含 F-001 缺陷 + APPROVED"
+    },
+    "closure": "Main Agent 收到 F-001 → 修复 → commit 4b62cbd"
+  },
+  "evidence_span_filter": {
+    "developer": {
+      "runId": "40c2af08-de40-46ea-8068-087e8db3b05f",
+      "childSessionKey": "agent:main:subagent:7c8ad207-6305-4f05-9c7e-7a41742caff4",
+      "delivery": "completion event 自动到达（一次重复投递已识别处理）"
+    },
+    "reviewer": {
+      "runId": "b56c0bc4-1bf4-4db3-a934-b23d3eb18a4c",
+      "childSessionKey": "agent:repository-reviewer:subagent:eab33ff8-fb1c-4df7-9047-ed363b14f30b",
+      "review_id": "RVW-20260821-003",
+      "session_id": "b7f9e2f2-df4e-45ed-a40b-6c690bdccb33",
+      "delivery": "completion event 自动到达（含 R1-R10 Gate 全 PASS + APPROVED）"
+    },
+    "closure": "Main Agent 收到 APPROVED → commit c39f6e5"
+  },
+  "result": "PASS",
+  "result_reason": "4 次 spawn（2 Developer + 2 Reviewer）结果均经 push-based auto-announce 可靠回到 Main Agent，无一次轮询；Main Agent 据此完成独立复跑、缺陷修复、commit 收口。RESULT CLOSURE 机制在新架构下真实验证通过。"
+}
