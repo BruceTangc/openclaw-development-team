@@ -401,7 +401,7 @@ skip "README 之外的隐含知识检查 — 需 Reviewer Stranger User Audit"
 # 本步是 Author 侧前置自检：尽早发现问题，不替代 Reviewer Release Decision。
 if command -v "$SCRIPT_DIR/protocol-compliance-check.sh" >/dev/null 2>&1 || [[ -x "$SCRIPT_DIR/protocol-compliance-check.sh" ]]; then
   echo "--- [9] Protocol Compliance (Author-side self-check, P0) ---"
-  if bash "$SCRIPT_DIR/protocol-compliance-check.sh" "$PROJECT_DIR" "$PTYPE" >/tmp/dtpcc.out 2>&1; then
+  if bash "$SCRIPT_DIR/protocol-compliance-check.sh" "$PROJECT_DIR" "$PROJECT_TYPE" >/tmp/dtpcc.out 2>&1; then
     ok "Protocol Compliance 通过（exit 0）"
   else
     rc=$?
