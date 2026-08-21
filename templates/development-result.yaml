@@ -1,19 +1,18 @@
 type: development_result
 task_id: ""
 status: ""          # COMPLETED | FAILED | BLOCKED | HUMAN_DECISION_REQUIRED
+task_type: ""       # SIMPLE | FEATURE | COMPLEX
 summary: ""
 changed_files: []
-created_files: []
 tests:
   executed: []
   passed: []
   failed: []
-validation:
-  status: ""        # PASS | FAIL
-  findings: []
 review:
-  status: ""        # APPROVED | CHANGES_REQUIRED | BLOCKED
+  status: ""        # APPROVED | REWORK_REQUIRED
   findings: []
 commit: ""
+version: ""         # SemVer（见 protocols/versioning.md）
+release: ""         # 版本 tag / release 说明（如未 release 留空）
+github: ""          # GitHub 状态（push 状态 / release 状态）
 known_issues: []
-next_action: ""

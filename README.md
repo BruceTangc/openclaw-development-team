@@ -1,99 +1,130 @@
-# OpenClaw Development Team v1.0
+# OpenClaw Development Team V1
 
-> Application-layer development team built on OpenClaw native sub-agents.
-> Absorbs MetaGPT's core ideas (Role separation / SOP / structured handoff / artifact driven workflow / staged development) without copying MetaGPT.
-> Repository Reviewer is the final quality gate — not reimplemented.
+**OpenClaw 上的自动化软件开发流水线。**
 
-## Phases
+用户提出开发需求后，OpenClaw 根据任务复杂度选择合适的开发路径，自主完成：
 
-| Phase | Scope | Status |
+```
+需求理解 → Repository 分析 → 必要时 Research → Implementation Plan
+  → DeepSeek 编码 → 测试 → Review → Rework
+  → Git 管理 → Version → Changelog → GitHub Release
+```
+
+最终得到一个「代码正确、测试通过、Review 通过、Git 历史清晰、版本明确、GitHub 仓库干净、可以继续迭代」的成品。
+
+---
+
+## 定位与原则
+
+**IDEAL 决定「做什么」，Development Team 决定「如何可靠落地」。**
+
+核心原则：
+
+1. 简单任务必须简单处理
+2. 复杂任务才走完整流程
+3. 不为了流程增加 Agent
+4. 不为了自主性让 Agent 猜测用户意图
+5. DeepSeek 负责代码实施，Reviewer 负责独立质量检查
+6. Git/GitHub 管理标准、保守、可追溯
+7. 不破坏用户已有修改
+8. 不擅自改变 IDEAL
+9. 流程高效，避免不必要的 sessions_spawn
+
+---
+
+## 角色模型（V1 收敛）
+
+```
+Main Agent
+  ↓
+Development Workflow（Main Agent 自己的步骤，不 spawn）
+  ↓
+Developer（DeepSeek）
+  ↓
+Reviewer（独立质量闸门）
+  ↓
+Git / Version / Changelog / GitHub Release
+```
+
+**只有两个独立执行体**：Developer（DeepSeek 编码）+ Reviewer（独立审查）。
+
+Requirement / Research / Repository Analysis / Architect / Validator 不再是独立角色，全部收敛为 Development Workflow 内部步骤或能力。
+
+---
+
+## 三档任务模型
+
+| 档位 | 路径 | 说明 |
 |:--|:--|:--|
-| **Phase 1** | Result Closure (spawn → completion → yield → Lead) | ✅ Verified |
-| **Phase 2** | Requirement / Solution Research / Repository Analysis / Architecture | ✅ Verified |
-| **Phase 3** | Developer Execution / Validator / Reviewer Adapter / Rework Loop | ✅ Verified |
-| **Phase 3.2** | Independent Audit: P0-1~P0-5 all PASS (real sub-agents, real dlt-simulator dev) | ✅ Verified |
-| **Phase 4** | Production Integration: Main Agent → Development Team → Main Agent | ✅ Verified (Phase 4.1: E2E 1 normal dev PASS + E2E 2 FAIL→REWORK→PASS, 15/15 pytest, real dlt-simulator, real sub-agents, real reviewer) |
+| SIMPLE | Understand → Implement → Test → Review(按需) → Commit | 单文件小改、typo、文档 |
+| FEATURE | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Commit → Version/Changelog | 新功能、多文件 |
+| COMPLEX | 检查 IDEAL → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Git → Version → Release | 新架构、多系统、安全 |
 
-## Quick Start
+---
 
-```bash
-# E2E tests
-python3 scripts/e2e_phase3.py    # Phase 3 schema tests
-python3 scripts/e2e_phase2.py    # Phase 2 artifact chain tests
-python3 scripts/e2e_scenarios.py # Phase 2 routing tests
-```
-
-## Complete Flow (Phase 4 Production)
+## 仓库结构
 
 ```
-User: "给 dlt-simulator 增加 XXX 功能"
-  → Main Agent (Task Router)
-    → Development Team
-      → Development Lead（= Main Agent 的开发编排角色）
-        → Requirement Analyst
-        → Solution Researcher
-        → Repository Analyst
-        → Architect
-        → Developer
-        → Validator
-        → Repository Reviewer
-      → development_result
-  → Main Agent
-  → User
+AGENTS.md                        # Main Agent 编排入口（角色模型 + 复杂度判断 + 流程）
+PROTOCOL.md                      # 协议总纲
+IMPLEMENTATION_SPEC.md           # 实现规范 + E2E 验收清单（CASE 1-10）
+agents/
+  developer/AGENTS.md            # Developer（DeepSeek）唯一代码执行体
+protocols/
+  result-closure.md              # 结果闭环（P0，保留已验证机制）
+  ideal-contract.md              # IDEAL 高层设计输入
+  routing.md                     # 复杂度判断 + 三档路由
+  task.md                        # Development Task 契约
+  delegation.md                  # Delegation 契约
+  agents/developer/AGENTS.md    # Developer 执行契约（DeepSeek）
+  review-adapter.md              # Reviewer 独立质量闸门（含独立验证子步骤）
+  rework-loop.md                 # Rework 循环
+  reuse-decision.md              # Research / 复用决策
+  artifact-persistence.md        # Artifact 持久化
+  git-workflow.md                # Git 保护（本次重点）
+  versioning.md                  # SemVer
+  changelog.md                   # CHANGELOG
+  release.md                     # GitHub Release Gate
+  repository-cleanliness.md      # 仓库整洁检查
+  human-decision.md              # Human Decision 触发条件
+  main-agent-integration.md      # Production Integration
+templates/                       # 收敛后的 YAML 模板
+scripts/                         # E2E 脚本（CASE 1-10）
+.tasks/                          # 工程 Artifact 持久化
 ```
 
-## Directory Structure
+---
+
+## Reviewer 的独立验证子步骤（关键设计）
+
+Validator 角色已取消，但「独立验证能力」保留，作为 Reviewer 的**强制子步骤**：
 
 ```
-openclaw-development-team/
-├── README.md
-├── AGENTS.md                     # Development Lead（= Main Agent 的开发编排角色）
-├── PROTOCOL.md                   # Core protocols (§1-16, Phase 4 = §16)
-├── IMPLEMENTATION_SPEC.md
-├── agents/
-│   ├── developer/AGENTS.md
-│   ├── validator/AGENTS.md
-│   ├── architect/AGENTS.md
-│   ├── requirement-analyst/AGENTS.md
-│   ├── solution-researcher/AGENTS.md
-│   └── repository-analyst/AGENTS.md
-├── protocols/
-│   ├── main-agent-integration.md # Phase 4: Task Router + Development Result
-│   ├── developer-execution.md
-│   ├── review-adapter.md
-│   ├── rework-loop.md
-│   ├── verification.md
-│   ├── task.md / delegation.md / result-closure.md
-│   ├── artifact-persistence.md / role-handoff.md / routing.md / reuse-decision.md
-├── templates/
-│   ├── development-result.yaml   # Phase 4: 标准输出
-│   ├── (all Phase 1-3 templates)
-├── scripts/                      # E2E test scripts
-└── .tasks/<task_id>/             # Persisted artifacts
+Reviewer
+  ├─ 1. Independent Verification（独立读代码/Git Diff、独立复跑测试、查边界、查 Regression）
+  ├─ 2. Requirement / IDEAL Compliance
+  ├─ 3. Code / Architecture Review
+  ├─ 4. Repository Consistency
+  └─ 5. Final Review Decision → APPROVED / REWORK_REQUIRED
 ```
 
-## Definition of Done
+这样既不重新膨胀成多个 Agent，又不因砍掉 Validator 而降低质量。
 
-Task = Requirement 满足 + Implementation Plan 完成 + Developer 完成 + Validator PASS + Repository Reviewer APPROVED → status = DONE
+---
 
-## Phase 4: Production Integration
+## 验收标准
 
-Main Agent 通过 Task Router 判断是否调用 Development Team：
-- 开发任务 → Development Team
-- 研究任务 → Research
-- 管理任务 → 对应 Skill
-- 闲聊 → 直接回复
+V1 完成需真实 E2E 验证至少 10 个 Case（每个 Case 必须有真实证据，不能只写文档）：
 
-Development Team 最终只返回一个 `development_result`（含 status/summary/changed_files/tests/validation/review/commit/known_issues/next_action）。
+- CASE 1: SIMPLE TASK
+- CASE 2: FEATURE TASK
+- CASE 3: COMPLEX TASK + IDEAL
+- CASE 4: Developer FAIL → REWORK → PASS
+- CASE 5: Reviewer FAIL → REWORK → PASS
+- CASE 6: Result Closure
+- CASE 7: Git / Version / Changelog
+- CASE 8: GitHub Release
+- CASE 9: 已有用户修改不能被覆盖
+- CASE 10: 真实 dlt-simulator
 
-Human Decision 只在必要时打扰用户。Failure Recovery 由 Lead 自主处理。
-
-## Constraints
-
-- No ACP / OpenHands Runtime / Codex Runtime / Claude Code Runtime
-- No custom scheduler / message bus / database / agent runtime
-- No modifying Agent OS Core
-- No reimplementing Repository Reviewer
-- No auto-push to remote (Release Gate in main session)
-- Max 3 rework attempts; same root cause 2x → RETURN_TO_ARCHITECT
-- HUMAN_DECISION_REQUIRED only when truly unable to auto-decide
+详见 `IMPLEMENTATION_SPEC.md`。

@@ -1,211 +1,136 @@
-# IMPLEMENTATION_SPEC.md — 实现规范 + E2E 验收清单
+# IMPLEMENTATION_SPEC.md — Development Team V1 实现规范
 
-OpenClaw Development Team v1.0（Phase 1 + Phase 2）的实现规范。
-
-> Phase 1 = §1-7（Result Closure + Minimal Validator + E2E）。Phase 2 = §8-13（新增角色 + 4 schema + 路由 + 持久化 + 复用 + 5 场景）。
+> 架构已收敛。本文定义 V1 的实现规范 + E2E 验收清单。
 
 ---
 
-## 1. 组件清单（8 项，对齐范围）
+## 1. 角色模型
 
-| # | 组件 | 实现方式 | 落地文件 |
-|:--|:--|:--|:--|
-| 1 | Development Lead | Main Agent 角色（本机） | `AGENTS.md` |
-| 2 | Developer Role | 原生 sub-agent | `agents/developer/AGENTS.md` |
-| 3 | Development Task | Task Contract | `protocols/task.md` + `templates/development-task.yaml` |
-| 4 | Delegation Contract | 委派契约 | `protocols/delegation.md` + `templates/delegation-contract.yaml` |
-| 5 | Implementation Result | 结构化实现结果 | `templates/implementation-result.yaml` |
-| 6 | Result Closure | P0 闭环 | `protocols/result-closure.md` |
-| 7 | Minimal Validator Stub | 最小校验 | `protocols/verification.md` + `templates/verification-result.yaml` |
-| 8 | E2E Test | 真实链路 | `scripts/e2e_runner.py` + `scripts/e2e_target.py` |
+```
+Main Agent（= Development Workflow 编排者）
+  ↓
+Development Workflow（Main Agent 自己的步骤，不 spawn）
+  Understand → Repository Analysis → Research(按需) → Plan → IDEAL(按需)
+  ↓
+Developer（DeepSeek，sessions_spawn）
+  ↓
+Reviewer（复用 repository-reviewer agent）
+  ↓
+Git / Version / CHANGELOG / GitHub Release（Main Agent 收尾）
+```
+
+**只有两个独立执行体**：Developer + Reviewer。
 
 ---
 
-## 2. OpenClaw API 使用方式（施工依据）
+## 2. Development Workflow 步骤（Main Agent 自己执行）
 
-- **委派**：`sessions_spawn(task=..., taskName=..., label=..., cwd=..., model=...)`
-  - 返回 `{ status: "accepted", runId, childSessionKey }`，非阻塞。
-  - `context` 默认 `isolated`（本任务独立，无需 fork 上下文）。
-- **等待**：push-based auto-announce —— spawn 后结束当前 turn，completion 事件作为下一条 user message 自动到达（sessions_spawn 返回的 note 明确此机制，无需显式 yield 原语）。
-- **消费**：completion/announce 回到 requester session，含 `Status` + 子代理 assistant 文本（含 stats line：sessionKey/sessionId/transcript path）。
-- **诊断（仅异常）**：`subagents` / `sessions_history` / `/subagents list|log|info`。
-- **追加（可选，非回传机制）**：`sessions_send`（timeoutSeconds: 0 = fire-and-forget）。
+### 2.1 Understand
+解析用户真实意图 → 识别功能/非功能/约束/范围 → 区分 fact 与 assumption → 产出待确认清单（仅重大未知升级）。
 
-> 注意：当前 API **没有** `sessions_yield` 工具；等待靠 push-based auto-announce。不要造 polling loop。
+### 2.2 IDEAL Contract（COMPLEX 必查）
+> 详见 `protocols/ideal-contract.md` + `templates/ideal-contract.yaml`。
 
----
+IDEAL = Objective / Scope / Requirements / Architecture / Implementation Constraints / Acceptance Criteria / Out of Scope。
 
-## 3. 契约字段（最小集）
+Development Team **不允许擅自改变 IDEAL**。缺失/冲突/歧义/无法安全实现 → HUMAN_DECISION_REQUIRED。
 
-### Development Task
-```
-task_id / project / goal / objective / scope / constraints / acceptance_criteria /
-requester_session / result_owner / status / attempt / created_at
-```
+### 2.3 Repository Analysis
+只读盘点现状（结构/能力/依赖/集成点/重复/冲突/风险）。
 
-### Delegation Contract
-```
-task_id / role / objective / context / scope / constraints / acceptance_criteria /
-expected_output / result_owner / timeout / attempt
-```
-> `result_owner` **必须是 Development Lead / requester session**，不是最终用户。
+### 2.4 Research（按需）
+> 详见 `protocols/reuse-decision.md`。
 
-### Implementation Result
-```
-type / task_id / status(COMPLETED|FAILED|BLOCKED|PARTIAL) / summary / changed_files /
-tests / acceptance_criteria / known_issues / evidence / next_recommended_stage
-```
-> 禁止只返回"完成了"，必须有 evidence。
+只有「是否存在现成方案」存疑才做。优先级：当前 Repo → 官方文档 → 官方 GitHub → 成熟开源 → 其他。找不到 → NO_SUITABLE_EXISTING_SOLUTION（禁止虚构）。
 
-### Verification Result
-```
-task_id / status(PASS|FAIL|BLOCKED) / tests / acceptance_criteria / findings / evidence
-```
+### 2.5 Plan
+收敛为 Implementation Plan（`templates/implementation-plan.yaml`）。
 
 ---
 
-## 4. Minimal Validator Stub 校验项
+## 3. Developer（DeepSeek）
 
-| 检查 | 内容 |
-|:--|:--|
-| changed_files 存在 | 有实际文件变更清单且非空 |
-| 是否执行测试 | tests 字段有执行记录 |
-| 测试是否通过 | tests 全部通过（无 failing） |
-| acceptance_criteria 满足 | 每条 criteria 有对应满足证据 |
-| git diff 合理 | diff 非空且与 changed_files 一致（无意外文件） |
+> 详见 `agents/developer/AGENTS.md`。
 
-输出 `verification_result`：`task_id/status/tests/acceptance_criteria/findings/evidence`，`status ∈ {PASS, FAIL, BLOCKED}`。
+- 唯一代码执行体，sessions_spawn（context=isolated）。
+- 职责：改代码 / 建文件 / 删必要文件 / 写测试 / 执行测试 / 按测试结果修复。
+- 不擅自重新设计产品。
+- 测试失败 → 修复 → 再测，有限次数自动修复，超限 → FAILED。
+- 禁止自动 push。
 
 ---
 
-## 5. E2E 验收清单（硬性，不接受 mock）
+## 4. Reviewer
 
-必须真实跑通一次：
+> 详见 `protocols/review-adapter.md`。
 
-1. [ ] Lead 建 Development Task + Delegation Contract
-2. [ ] `sessions_spawn` 委派给 Developer sub-agent
-3. [ ] Developer 在极小测试项目加一个 `hello` 函数，自测通过，回传 Implementation Result
-4. [ ] completion 回到 Lead（push-based auto-announce 消费）
-5. [ ] Lead 解析 Implementation Result
-6. [ ] Minimal Validator 校验 → `status=PASS`
-7. [ ] 记录证据：OpenClaw version / sessions_spawn 参数 / requester session / child session / completion delivery route / 实际结果
+- 复用 repository-reviewer agent，与 Developer 判断相对独立。
+- 强制「独立验证」子步骤（独立读代码/Git Diff、独立复跑关键测试、查边界、查 Regression、必要时加临时验证）。
+- 检查：IDEAL/Requirement、Acceptance Criteria、Implementation、Git Diff、Regression、Tests、Documentation、Unrelated Changes、Repository Consistency。
+- 结果：APPROVED / REWORK_REQUIRED。
+- REWORK_REQUIRED → Development Workflow → Developer → Test → Reviewer，超限 → FAILED。
 
 ---
 
-## 6. Failure 测试（超时 / 失败路径）
+## 5. Git / Version / Changelog / Release
 
-1. [ ] 构造一个超时 task → 期望 `SUBAGENT_TIMEOUT`
-2. [ ] Lead 用 `subagents` / `sessions_history` 诊断（recovery）
-3. [ ] Retry（attempt+1，最多 3 次）或 ESCALATE
+> 详见 `protocols/git-workflow.md` / `versioning.md` / `changelog.md` / `release.md` / `repository-cleanliness.md`。
 
----
-
-## 7. 当前已知限制
-
-- 本项目为 **subagent 运行时**（depth 1 leaf），工具集不含 `sessions_spawn` / `subagents` / `sessions_history`。
-  - 因此真正 spawn 的 E2E 必须由 **Main Agent 会话**（本机 `main` 角色，已授予 `sessions_spawn`/`sessions_send`/`subagents`）执行。
-  - 等待机制是 push-based auto-announce（无 `sessions_yield` 工具），不可用 polling loop。
-- 详见 `README.md` 与最终施工报告。
+- Git 保护优先：开发前记录 branch/commit/status/已有修改；优先 feature branch 或 worktree；禁止 force push/reset/覆盖未提交文件/改历史（除非 Human Decision）。
+- Commit 与 Version 分离。
+- SemVer + CHANGELOG + 保守 Release Gate。
+- 收尾 Repository Cleanliness 检查。
 
 ---
 
-## 8. Phase 2 新增角色（4 个）
+## 6. development_result 结构
 
-| 角色 | 产出 Artifact | 关键职责 | 落盘文件 |
-|:--|:--|:--|:--|
-| Requirement Analyst | `requirement_result` | 自然语言→结构化需求，不扩大需求/不把猜测当事实 | `requirement-result.yaml` |
-| Solution Researcher | `solution_discovery_result` | 搜索优先级 + GitHub 分析，找不到 Must NO_SUITABLE_EXISTING_SOLUTION | `solution-discovery-result.yaml` |
-| Repository Analyst | `repository_understanding` | 只读理解现状（结构/能力/依赖/重复/冲突/风险） | `repository-understanding.yaml` |
-| Architect | `architecture_result` + `implementation_plan` | 三输入→架构+方案，必答七问 | `architecture-result.yaml` + `implementation-plan.yaml` |
+> 详见 `templates/development-result.yaml`。
 
-> 角色定义见 `agents/*/AGENTS.md`；schema 模板见 `templates/*.yaml`。
-
----
-
-## 9. 4 个 Schema + Implementation Plan Schema
-
-### Requirement Result
-```
-type/task_id/status/producer/user_request/goal/problem/expected_outcome/
-functional_requirements/non_functional_requirements/constraints/scope(in/excluded)/
-assumptions/unknowns/acceptance_criteria/risk_level/recommended_path
-```
-
-### Solution Discovery Result
-```
-type/task_id/status/producer/search_scope/candidates[]（name/repository/purpose/license/
-maintenance/architecture_summary/relevant_features/compatibility/security_notes/
-reuse_level/pros/cons）/recommendation/reason/evidence
-```
-> `reuse_level ∈ {DIRECT_REUSE, ADAPT, LEARN_AND_BUILD, NOT_SUITABLE}`
-
-### Repository Understanding
-```
-type/task_id/status/producer/repository/relevant_files/existing_capabilities/
-existing_components/dependencies/integration_points/duplicate_functionality/
-potential_conflicts/risks/recommendations/evidence
-```
-
-### Architecture Result
-```
-type/task_id/status/producer/problem_definition/architecture/components[]/data_flow/control_flow/
-integration_points/reuse_components/new_components/modified_components/
-implementation_strategy/implementation_steps/acceptance_criteria/test_strategy/risks/
-rollback_strategy/open_questions
-```
-
-### Implementation Plan（Architect 最终核心产物）
-```
-type/task_id/objective/repository/architecture_summary/reuse[component,reason]/
-modify[component,reason]/create[component,reason]/steps[step,owner,dependencies,acceptance_criteria]/
-testing/validation/review/rollback/definition_of_done
+```yaml
+type: development_result
+task_id: ""
+status: <COMPLETED|FAILED|BLOCKED|HUMAN_DECISION_REQUIRED>
+task_type: <SIMPLE|FEATURE|COMPLEX>
+summary: ""
+changed_files: []
+tests: {executed: [], passed: [], failed: []}
+review: {status: <APPROVED|REWORK_REQUIRED>, findings: []}
+commit: ""
+version: ""
+release: ""
+github: ""
+known_issues: []
 ```
 
 ---
 
-## 10. Lead 动态路由逻辑
+## 7. E2E 验收清单（CASE 1-10）
 
-Lead 是唯一 Orchestrator，不固定流水线。实现最小决策树 + 复杂度判断 + 六项校验：
+> 每个 Case 必须有真实证据，不能只写文档说「测试通过」。
 
-- **复杂度路由（建议）**：简单→Developer；中等→Repo Analyst→Architect→Developer；复杂→Solution Researcher→Repo Analyst→Architect→Developer。
-- **六项校验**：task_id / status / required fields / acceptance_criteria / evidence / blocking issue。
-- **分支**：不完整→RETRY_ROLE；重大冲突→RETURN_TO_ARCHITECT；需求不清→HUMAN_DECISION_REQUIRED；复用已有→REUSE_EXISTING_CAPABILITY；完整→下一阶段。
-- **复杂度只是建议**，最终 Lead 判断。
+| Case | 内容 | 关键验证点 |
+|:--|:--|:--|
+| CASE 1 | SIMPLE TASK | 简单任务快速完成，不 spawn 完整流水线 |
+| CASE 2 | FEATURE TASK | 标准流程：Plan → Developer → Test → Reviewer → Commit |
+| CASE 3 | COMPLEX TASK + IDEAL | IDEAL 缺失时 HUMAN_DECISION_REQUIRED |
+| CASE 4 | Developer FAIL → REWORK → PASS | 测试失败自动修复回环 |
+| CASE 5 | Reviewer FAIL → REWORK → PASS | Reviewer 抓缺陷 → Rework → 复验 |
+| CASE 6 | Result Closure | 结果可靠回 Main Agent，不轮询 |
+| CASE 7 | Git / Version / Changelog | Commit 与 Version 分离、SemVer、CHANGELOG |
+| CASE 8 | GitHub Release | Release Gate 条件满足才 release |
+| CASE 9 | 已有用户修改不被覆盖 | Git 保护：不覆盖用户未提交修改 |
+| CASE 10 | 真实 dlt-simulator | 真实仓库完整闭环 |
 
-> 逻辑见 `AGENTS.md` + `protocols/routing.md`。
-
----
-
-## 11. Artifact Persistence
-
-工程 Artifact 持久化到 `.tasks/<task_id>/`，用 repository filesystem，不做复杂数据库：
-
-```
-.tasks/<task_id>/
-├── development-task.yaml / requirement-result.yaml
-├── solution-discovery-result.yaml / repository-understanding.yaml
-├── architecture-result.yaml / implementation-plan.yaml
-└── handoff-log.md
-```
+**完成定义**：以上 10 个 Case 全部真实 PASS，才标记 V1 完成。
 
 ---
 
-## 12. GitHub Search + Reuse Decision 机制
+## 8. 禁止项
 
-- **搜索优先级**：当前 Repo → Agent OS → OpenClaw → 已装 Skills → GitHub → 官方 API/SDK → 其他开源。
-- **GitHub 候选分析**：repository/purpose/features/architecture/license/maintenance/recent_activity/dependencies/security/compatibility/reuse_feasibility。
-- **复用决策**：DIRECT_REUSE / ADAPT / LEARN_AND_BUILD / NOT_SUITABLE；Agent OS 已有相同能力→REUSE_EXISTING_CAPABILITY 禁止重复实现；找不到→NO_SUITABLE_EXISTING_SOLUTION（禁止假装找到）。
-
-> 见 `protocols/reuse-decision.md`。
-
----
-
-## 13. Phase 2 E2E（5 个场景，硬性）
-
-1. [ ] Test1 简单函数 → Requirement → Developer，不强制 Architect
-2. [ ] Test2 新 Skill → Requirement → Repository Analyst → Architect → Developer
-3. [ ] Test3 GitHub 已有类似 → 加 Solution Researcher → GitHub Search → Reuse/Adapt/Build → Repository → Architect → Developer
-4. [ ] Test4 Agent OS 已有相同能力 → Lead 判 REUSE_EXISTING_CAPABILITY 禁止重复实现
-5. [ ] Test5 Architect 发现需求与现有架构冲突 → RETURN_TO_ARCHITECT 不继续 Developer
-
-> 执行：`python3 scripts/e2e_scenarios.py`；验证：`python3 scripts/e2e_phase2.py`。
+- ❌ 增加新 Agent / Runtime / ACP / 消息总线 / 复杂数据库 / CI/CD / 未来规划功能
+- ❌ 修改 Agent OS Core
+- ❌ 擅自改变 IDEAL
+- ❌ 破坏用户已有修改
+- ❌ 自动 push（push 走 Release Gate，需用户确认）
+- ❌ 为通过 E2E 伪造测试结果

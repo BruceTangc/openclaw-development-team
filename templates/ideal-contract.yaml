@@ -1,0 +1,13 @@
+type: ideal_contract
+task_id: ""
+objective: ""                       # 一句话目标
+scope:
+  included: []
+  excluded: []
+requirements:
+  functional: []                    # 功能需求
+  non_functional: []                # 非功能需求（性能/兼容/安全/可维护）
+architecture: ""                    # 架构约束（技术栈/模块边界，可选）
+implementation_constraints: []      # 实现硬约束（语言/库/兼容/安全）
+acceptance_criteria: []             # 可验证成功条件（V2 可观测）
+out_of_scope: []                    # 明确排除项

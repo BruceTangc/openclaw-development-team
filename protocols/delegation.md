@@ -4,28 +4,28 @@
 
 ## 语义
 
-Delegation Contract 是 Lead 交给 Developer 的"工作说明书"：明确做什么、边界在哪、怎么算完成、结果归谁。
+Delegation Contract 是 Main Agent 交给 Developer 的「工作说明书」：明确做什么、边界在哪、怎么算完成、结果归谁。
 
 ## 字段（最小集）
 
 | 字段 | 说明 |
 |:--|:--|
 | `task_id` | 关联 Development Task |
-| `role` | 委派角色（Phase 1：`developer`） |
+| `role` | 委派角色（V1：`developer`） |
 | `objective` | 可验证达成目标 |
 | `context` | 背景/必要上下文（isolation 下要写清楚） |
 | `scope` | 在范围内/在范围外 |
 | `constraints` | 边界（只读路径/不 push/不改安全/脱敏） |
 | `acceptance_criteria` | 可验证成功条件 |
 | `expected_output` | 产出格式（Implementation Result YAML） |
-| `result_owner` | **Development Lead / requester session**（非最终用户） |
-| `timeout` | 超时策略（依赖 runTimeoutSeconds） |
+| `result_owner` | **Main Agent / requester session**（非最终用户） |
+| `timeout` | 超时策略 |
 | `attempt` | 第几次尝试 |
 
 ## 硬约束
 
-- `result_owner` **必须是 Lead / requester session，不是最终用户**。这是 Phase 1 的铁律。
-- `context` 在 `isolated` 模式下要自足：Developer 看不到 Lead 的会话上下文。
+- `result_owner` **必须是 Main Agent / requester session，不是最终用户**。
+- `context` 在 `isolated` 模式下要自足：Developer 看不到 Main Agent 的会话上下文。
 - `expected_output` 指向 `templates/implementation-result.yaml` 结构。
 
 ## 模板

@@ -1,43 +1,47 @@
 # protocols/result-closure.md — Result Closure（P0 核心协议）
 
-> 子代理结果必须可靠回到 Development Lead。Lead 是 result_owner。这是 Phase 1 的 P0 铁律。
-> 完整版见 `PROTOCOL.md` §1。
+> 子代理结果必须可靠回到 Main Agent / Development Workflow。这是 P0 铁律（保留已验证机制）。
 
 ## 1. 首选路径（OpenClaw 原生 announce 链）
 
 ```
-Lead → sessions_spawn → Developer 执行 → completion/announce（agent turn，幂等 key）
-  → requester session → 自动作为 user message 到达 → Lead 消费 → Validator 校验
+Main Agent → sessions_spawn → Developer 执行 → completion/announce（agent turn，幂等 key）
+  → requester session → 自动作为 user message 到达 → Main Agent 消费 → Reviewer
 ```
 
 ## 2. 等待原语
 
-- **用 push-based auto-announce**：spawn 后结束当前 turn，等 completion 事件作为下一条 user message 自动到达（sessions_spawn 返回的 note 明确此机制）。
+- **用 push-based auto-announce**：spawn 后结束当前 turn，等 completion 事件作为下一条 user message 自动到达。
 - **禁止 polling loop**：不用 sleep / sessions_history / sessions_list / subagents list 轮询等完成。
 
 ## 3. 结果语义
 
 - `Result` = 子代理最新可见 assistant 文本（tool/toolResult 不提升）。
 - `Status` 由 runtime 派生（ok/error/timeout/unknown），非文本推断。
-- 结果必须结构化（Implementation Result），禁止只返回"完成了"。
+- 结果必须结构化（Implementation Result），禁止只返回「完成了」。
 
 ## 4. 回传机制
 
 - 回传**默认靠 announce 链**，不要求 Developer 用 sessions_send（原生 sub-agent 无此工具）。
-- `sessions_send` 仅供 Lead 主动追加指令（fire-and-forget），非回传机制。
+- `sessions_send` 仅供 Main Agent 主动追加指令（fire-and-forget），非回传机制。
 
 ## 5. Recovery（超时/失败阶梯）
 
 | 阶 | 动作 | 条件 |
 |:--|:--|:--|
 | R1 | Retry | 首次超时/失败，同参重 spawn，attempt+1（≤3） |
-| R2 | 接管 | Retry 仍失败 / 子代理不可达，Lead 直接执行 |
-| R3 | ESCALATE | 连续失败 ≥3 / HUMAN_DECISION_REQUIRED，转主会话 |
+| R2 | 接管 | Retry 仍失败 / 子代理不可达，Main Agent 直接执行 |
+| R3 | ESCALATE | 连续失败 ≥3 / HUMAN_DECISION_REQUIRED，转用户 |
 
 - 超时诊断用 `subagents` / `sessions_history`（recovery 手段，非正常等待）。
-- 每次 retry 记录 `attempt / failure_reason / previous_result / new_strategy`。
+- **允许 fallback `sessions_history`，但不把它当正常主流程。**
 
-## 6. Provenance + Anti-loop
+## 6. 结果通知原则
+
+- **不默认把内部开发结果 announce 给最终用户。**
+- 只有 `HUMAN_DECISION_REQUIRED` 或最终完成结果，才由 Main Agent 决定如何通知用户。
+
+## 7. Provenance + Anti-loop
 
 - 每次 spawn/回传保留 `agent_id / session_id / task_id / operation_id / correlation_id / parent_task_id`。
 - 每 cycle 带 `cycle_id / retry_count / action_signature / last_action_time`。

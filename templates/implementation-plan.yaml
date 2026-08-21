@@ -1,4 +1,4 @@
-# templates/implementation-plan.yaml — Implementation Plan（Architect 最终核心产物）
+# templates/implementation-plan.yaml — Implementation Plan（Development Workflow 产出）
 type: implementation_plan
 task_id: DT-YYYYMMDD-001
 objective: "目标"
@@ -20,7 +20,7 @@ steps:
     acceptance_criteria:
       - "该步验收标准（可验证）"
 testing: "测试安排"
-validation: "验证方式"
+validation: "验证方式（Reviewer 独立验证）"
 review: "评审安排（Repository Reviewer）"
 rollback: "回滚方案"
 definition_of_done: "完成的唯一定义（可验证，V2 可观测）"

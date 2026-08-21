@@ -1,11 +1,20 @@
 type: review_result
 task_id: ""
-review_status: ""   # APPROVED | CHANGES_REQUIRED | BLOCKED | HUMAN_DECISION_REQUIRED
+review_id: ""
+independent_verification:
+  performed: true           # 是否执行了独立验证子步骤
+  code_read: true           # 是否独立读取代码
+  git_diff_reviewed: true   # 是否独立审查 Git Diff
+tests_reproduced:
+  executed: []              # 独立复跑的测试
+  passed: []
+  failed: []
 findings:
-  critical: []      # must fix
-  warning: []       # should fix
-  info: []          # optional fix
+  critical: []              # must fix → REWORK_REQUIRED
+  warning: []               # should fix
+  info: []                  # optional
+regression_status: ""       # NONE | MINOR | BLOCKING
+final_decision: ""          # APPROVED | REWORK_REQUIRED
 recommendation: ""
 evidence: []
 reviewer_session: ""
-review_id: ""

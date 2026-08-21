@@ -1,60 +1,62 @@
-# protocols/routing.md — Lead 动态路由协议（决策树 + 复杂度判断）
+# protocols/routing.md — 复杂度判断 + 三档路由
 
-> Development Lead 是唯一 Orchestrator，不固定流水线。本协议定义 Lead 如何根据需求特征动态路由角色。
+> Main Agent 判断复杂度，选择正确路径。**简单任务必须简单处理，禁止过度工程化。**
 
-## 1. 复杂度判断（路由建议，最终 Lead 定）
+## 1. 三档任务模型
 
-| 复杂度 | 特征（示例） | 路由路径 |
+| 档位 | 特征 | 路径 | spawn |
+|:--|:--|:--|:--|
+| **SIMPLE** | typo / 单文件小改 / 文档 / 简单配置 / 明确小 bug | Understand → Implement → Test(必要) → Review(按需) → Commit | 0~1 |
+| **FEATURE** | 多文件 / 新功能 / API 集成 / 数据处理 | Understand → Repository Analysis → Plan → Developer → Test → Reviewer → Rework → Commit → Version/Changelog | 1~2 |
+| **COMPLEX** | 新架构 / 多系统 / 安全 / 大重构 / 产品方向不清 | 检查 IDEAL → Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → Version → Release | 1~2 + Research |
+
+## 2. 复杂度判断规则
+
+Main Agent 收到需求后，按「实质特征」判断，不是按字面：
+
+- 已有几乎一样的模块 → 降级为 SIMPLE（复用即可）。
+- 单文件、影响面小、无架构决策 → SIMPLE。
+- 多文件、有明确功能边界、无产品方向歧义 → FEATURE。
+- 涉及架构、多系统集成、安全、大重构、或「做什么」本身不清晰 → COMPLEX。
+
+> 宁可把「看起来复杂」降级为 FEATURE 高效处理，也不要为简单任务铺完整流水线。
+
+## 3. 各档位细节
+
+### 3.1 SIMPLE
+- Main Agent 自己 Understand → 直接改（或单个 Developer）→ 必要测试 → 按需 Review → Commit。
+- **不 spawn 完整流水线**，不建 Requirement/Architect 等角色。
+- 若改动极小且自信，可 Main Agent 直接实施（0 spawn）。
+
+### 3.2 FEATURE
+- Understand + Repository Analysis + Plan 都在 Main Agent 上下文内完成。
+- spawn Developer 实施 → 测试 → spawn Reviewer 审查 → Rework → Commit → Version/Changelog。
+
+### 3.3 COMPLEX
+- **先检查 IDEAL**：缺 IDEAL → HUMAN_DECISION_REQUIRED。
+- Repository Analysis → Research(按需) → Plan → Developer → Test → Reviewer → Rework → Git → Version → Release。
+
+## 4. Research 按需触发
+
+只有「是否存在现成方案」存疑时才做 Research（见 `reuse-decision.md`）。已知领域、纯内部实现 → 跳过 Research，不重复调研。
+
+## 5. Reviewer 按风险决定
+
+- SIMPLE：Reviewer 按需（低风险可跳过，或 Main Agent 快速自查）。
+- FEATURE / COMPLEX：Reviewer 必须执行。
+
+## 6. 分支语义（Workflow 内部）
+
+| 分支 | 含义 | 动作 |
 |:--|:--|:--|
-| **简单** | typo / 单文件小改 / 文档 / 简单配置 / 明确 bug | Requirement Analyst → Developer |
-| **中等** | 多文件 / 新 Skill / 新功能 / API 集成 / 数据处理 | Requirement Analyst → Repository Analyst → Architect → Developer |
-| **复杂** | 新 Agent / 新 Team / 新架构 / Agent OS 集成 / Runtime 集成 / 数据库 / 多系统 / 安全 / 大 refactor | Requirement Analyst → Solution Researcher → Repository Analyst → Architect → Developer |
+| HUMAN_DECISION_REQUIRED | IDEAL 缺失 / 需求不清 / 重大矛盾 | 停止，回报用户 |
+| REUSE_EXISTING_CAPABILITY | 已有相同能力 | STOP，记录复用结论 |
+| REWORK_REQUIRED | Reviewer 抓缺陷 | 回 Developer 修复（≤最大次数） |
+| FAILED | 超限失败 | 回报 Main Agent |
 
-> 复杂度是**建议**，不是铁律。Lead 依据需求实质特征（如仓库已有几乎一样模块 → 降级为简单+复用）最终判断。
+## 7. 禁止项
 
-## 2. 决策树（核心流转）
-
-```
-收到需求
-  → Requirement Analyst → requirement_result
-      ├─ HUMAN_DECISION_REQUIRED → 回报主会话，等用户
-      ├─ REUSE_EXISTING_CAPABILITY → STOP（记录复用结论，禁止重复实现）
-      └─ 正常 → 按复杂度路由：
-          ├─ 简单 → Developer
-          ├─ 中等 → Repository Analyst → Architect → Developer
-          └─ 复杂 → Solution Researcher → Repository Analyst → Architect → Developer
-  → 每步 Result 六项校验：
-      ├─ 不完整 → RETRY_ROLE
-      ├─ 需求与现状冲突 → RETURN_TO_ARCHITECT
-      ├─ 需求不清 → HUMAN_DECISION_REQUIRED
-      └─ 完整 → 下一阶段
-  → Architect 产出 implementation_plan → 校验 DoD 完整 → 交付（Phase 2 终点）
-```
-
-## 3. Result 六项校验
-
-| # | 检查 | 不满足 → |
-|:--|:--|:--|
-| 1 | `task_id` 匹配 | 丢弃/纠正 |
-| 2 | `status` 合法 | RETRY_ROLE |
-| 3 | `required fields` 齐全（按角色 schema） | RETRY_ROLE |
-| 4 | `acceptance_criteria` 满足且有证据 | RETRY_ROLE |
-| 5 | `evidence` 非空可追溯 | RETRY_ROLE |
-| 6 | `blocking issue`（冲突/重大未知） | 冲突 → RETURN_TO_ARCHITECT；需求不清 → HUMAN_DECISION_REQUIRED |
-
-## 4. 分支语义
-
-| 分支 | 含义 | Lead 动作 |
-|:--|:--|:--|
-| RETRY_ROLE | 同角色产出不达标 | 重新委派同角色，attempt+1（≤3），记录 failure_reason / new_strategy |
-| RETURN_TO_ARCHITECT | 需求与现状/架构冲突 | 回给 Architect 重新设计，不推进 Developer |
-| HUMAN_DECISION_REQUIRED | 需求不清 / 重大矛盾 / 重大未知 | 回报主会话，不瞎猜 |
-| REUSE_EXISTING_CAPABILITY | Agent OS / 现有 Skill 已有相同能力 | STOP，记录复用结论，禁止重复实现 |
-| 进入下一阶段 | Result 完整达标 | 委派下一角色 |
-
-## 5. 禁止项
-
-- ❌ 固定流水线（不看需求复杂度一律走全 5 角色）。
-- ❌ Lead 亲自干满全程（专业工作必须委派对应 Role）。
-- ❌ 不校验就放行到下一阶段。
-- ❌ 失败无新证据地无限 RETRY（≥3 → ESCALATE）。
+- ❌ 固定流水线（不看复杂度一律走全流程）
+- ❌ 简单任务 spawn 一堆角色
+- ❌ 重复 Research / 重复读 Repo
+- ❌ 失败无新证据地无限重试
