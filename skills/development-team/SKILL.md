@@ -1,6 +1,38 @@
 ---
 name: development-team
 description: 软件开发专用 Workflow。当用户要求修改代码、新增/删除功能、修复 Bug、重构、修改已有仓库、多文件工程任务，或明确要求开发/实现/写代码时触发。简单问题、解释代码、普通咨询不要触发。
+# x-agent-os 接入声明（遵循 Agent OS SKILL-INTEGRATION.md v1.3，不自行发明字段）
+x-agent-os:
+  protocol_version: "1.3"
+  layer: "business"
+  trigger: "user|heartbeat|cron|hook"
+  path:
+    fast: true
+    full: true
+  entry_mode: "both"
+  requires:
+    context: true
+    goal_task_semantics: true
+    task: conditional
+    decision: conditional
+    orchestrator: conditional
+    permission: true
+    verification: true
+    evaluation: conditional
+    writeback: conditional
+    evolution: conditional
+  permissions: []
+  delegation:
+    max_level: "L1"
+    inherit_parent: false
+    requires_scope: true
+  outputs:
+    success_condition: required
+    evidence: required
+  verification: "V2"
+  memory_write: "governed"
+  knowledge_write: "governed"
+  evolution_feedback: true
 ---
 
 # Development Team（软件开发专用 Workflow）

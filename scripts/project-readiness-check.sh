@@ -41,6 +41,9 @@ if [[ ! -d "$PROJECT_DIR" ]]; then
   exit 3
 fi
 
+# 固化本脚本目录（绝对路径），不受后续 cd $PROJECT_DIR 影响（secret-patterns.sh / README 解析依赖它）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 cd "$PROJECT_DIR" || exit 3
 
 # ---------- 状态 ----------
@@ -242,10 +245,17 @@ else
       [[ -n "$(find . -maxdepth 2 -iname 'test*' 2>/dev/null | head -1)" ]] && has_tests=1 ;;
   esac
   if [[ "$has_tests" -eq 1 ]]; then
-    if grep -qiE "(^|### )?(testing|test|测试)" README.md && grep -qiE "\$[[:space:]]*(pytest|npm test|npm run test|python -m |test|make test)" README.md; then
-      ok "测试说明存在且含可执行测试命令"
-    elif grep -qiE "(^|### )?(testing|test|测试)" README.md; then
-      fail "仓库含测试文件，但 README 未给出可执行的测试命令"
+    # H2：与 install/usage 的代码块解析逻辑统一——支持 fenced code block + 多种测试命令。
+    # 识别方式：testing 章节存在 且 （含 $ 提示符命令 或 代码块裸命令覆盖多语言测试器）。
+    TESTCMD='pytest|python[[:space:]]+-m[[:space:]]+pytest|npm[[:space:]]+test|npm[[:space:]]+run[[:space:]]+test|go[[:space:]]+test|go[[:space:]]+mod[[:space:]]+test|cargo[[:space:]]+test|make[[:space:]]+test|unittest|pytest'
+    if grep -qiE "(^|### )?(testing|test|测试)" README.md; then
+      if grep -qiE "$TESTCMD" README.md; then
+        ok "测试说明存在且含可执行测试命令"
+      elif grep -qiE "\$[[:space:]]+test" README.md; then
+        ok "测试说明存在（含 $ 提示符测试命令）"
+      else
+        fail "仓库含测试文件，但 README 未给出可执行的测试命令（如 pytest / npm test / go test）"
+      fi
     else
       fail "仓库含测试文件，但缺少 testing 说明"
     fi
@@ -310,42 +320,66 @@ else
 fi
 
 # ---------- 5. Secrets / API Keys ----------
+# C1：统一 secret 检测规则——readiness 与 Reviewer 共用秘密规则库 secret-patterns.sh（单一来源，不维护两套）。
+#     检测到即 FAIL（fail-closed）。
 echo "--- [5] Secrets / API Keys ---"
+SCRIPT_DIR_SEC="$SCRIPT_DIR"
+SECRET_PATTERN_COUNT=0
+SECRET_PATTERNS_ALL=()
+if [[ -f "$SCRIPT_DIR_SEC/secret-patterns.sh" ]]; then
+  source "$SCRIPT_DIR_SEC/secret-patterns.sh"
+else
+  # fail-closed：规则库缺失 = 环境损坏，直接 BLOCK（不允许静默跳过 secret 检查）
+  fail "secret 规则库缺失 (scripts/secret-patterns.sh) — 无法执行 secret 检测 [BLOCK]"
+fi
 SCAN_FILES="$(find . -not -path './.git/*' -not -path './node_modules/*' -not -path '*/cache/*' -type f 2>/dev/null)"
 SECRET_FOUND=0
 for f in $SCAN_FILES; do
   test -f "$f" || continue
   case "$f" in
-    .gitignore|package-lock.json|yarn.lock|poetry.lock|scripts/project-readiness-check.sh) continue ;;
+    .gitignore|package-lock.json|yarn.lock|poetry.lock|scripts/project-readiness-check.sh|scripts/secret-patterns.sh|scripts/check-secrets.sh) continue ;;
   esac
-  if grep -qE '(sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|sk_live_[0-9a-z]{20,})' "$f" 2>/dev/null; then
-    echo "  [SECRET] 疑似密钥硬编码: $f"
-    SECRET_FOUND=1
-  fi
+  # 逐条子正则 -e 匹配（复用统一库 SECRET_PATTERNS_ALL）
+  for pat in "${SECRET_PATTERNS_ALL[@]}"; do
+    if grep -qiE -- "$pat" "$f" 2>/dev/null; then
+      echo "  [SECRET] 疑似密钥硬编码: $f"
+      SECRET_FOUND=1
+      break
+    fi
+  done
 done
 if [[ "$SECRET_FOUND" -eq 0 ]]; then
-  ok "未在文件中发现疑似 API key / 令牌硬编码"
+  ok "未在文件中发现疑似 API key / 令牌硬编码（统一规则库 ${SECRET_PATTERN_COUNT} 条）"
 else
-  fail "发现疑似密钥硬编码，必须移除或改用环境变量 + .gitignore"
+  fail "发现疑似密钥硬编码，必须移除或改用环境变量 + .gitignore [BLOCK]"
 fi
 
-# ---------- 6. 本地绝对路径 ----------
-echo "--- [6] Local Absolute Paths ---"
+# ---------- 6. 本地绝对路径（H1：WARN→BLOCK，fail-closed） ----------
+# 覆盖 /home/<user>/、/Users/<user>/、C:\Users\<user>\；命中即阻断。
+echo "--- [6] Local Absolute Paths (BLOCK on hit) ---"
+LOCAL_PATH_PATS=(
+  '/home/[A-Za-z0-9_.-]+/'
+  '/Users/[A-Za-z0-9_.-]+/'
+  'C:\\\\Users\\\\[A-Za-z0-9_.-]+\\\\'
+)
 PATHS=0
 for f in $SCAN_FILES; do
   test -f "$f" || continue
   case "$f" in
-    .gitignore|package-lock.json|yarn.lock|poetry.lock|scripts/project-readiness-check.sh) continue ;;
+    .gitignore|package-lock.json|yarn.lock|poetry.lock|scripts/project-readiness-check.sh|scripts/secret-patterns.sh) continue ;;
   esac
-  if grep -qE "(/home/[A-Za-z0-9_]+/|C:\\\\Users\\\\)" "$f" 2>/dev/null; then
-    echo "  [PATH] 本地绝对路径: $f"
-    PATHS=1
-  fi
+  for pat in "${LOCAL_PATH_PATS[@]}"; do
+    if grep -qE -- "$pat" "$f" 2>/dev/null; then
+      echo "  [PATH] 本地用户绝对路径: $f (命中 $pat)"
+      PATHS=1
+    fi
+  done
+  [ "$PATHS" -eq 1 ] && break
 done
 if [[ "$PATHS" -eq 0 ]]; then
-  ok "未发现硬编码的本地绝对路径 (/home/... 或 C:\\Users\\...)"
+  ok "未发现硬编码本地用户绝对路径 (/home/... /Users/... C:\\Users\\...) [BLOCK on hit]"
 else
-  warn "发现本地绝对路径 — 若用于文档示例请标注为占位/相对路径"
+  fail "发现硬编码本地用户绝对路径，必须改为相对路径或占位符 [BLOCK]"
 fi
 
 # ---------- 7. 目录结构 ----------

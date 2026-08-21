@@ -250,10 +250,14 @@ install_files() {
     cp "$src/skills/development-team/SKILL.md" "$SKILL_DIR/SKILL.md"
   fi
 
-  # 3. 确保脚本可执行
+  # 3. 确保脚本可执行（显式错误处理：失败不再 || true 静默吞掉，而是记录原因）
   if [[ -d "$DT_DIR/scripts" ]]; then
-    chmod +x "$DT_DIR/scripts/"*.sh 2>/dev/null || true
-    chmod +x "$DT_DIR/scripts/"*.py 2>/dev/null || true
+    if ! chmod +x "$DT_DIR/scripts/"*.sh 2>/dev/null; then
+      warn "chmod +x *.sh 失败（部分脚本可能不可执行）— 安装继续，但 Reviewer 前请检查"
+    fi
+    if ! chmod +x "$DT_DIR/scripts/"*.py 2>/dev/null; then
+      warn "chmod +x *.py 失败（部分脚本可能不可执行）— 安装继续，但 Reviewer 前请检查"
+    fi
   fi
 }
 

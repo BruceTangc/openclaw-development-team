@@ -3,6 +3,25 @@
 > 架构已收敛。V1 = 一个自动化软件开发流水线，角色模型固定为：
 > `Main Agent → Development Workflow → Developer（DeepSeek）→ Reviewer → Git/Version/Changelog/Release`。
 
+## 0. X Agent OS Protocol 继承声明（P0 Compliance）
+
+本协议在以下层级之上运行，**继承而非覆盖** Agent OS 基础协议：
+
+```
+OpenClaw Runtime
+  → Agent OS
+    → X Agent OS Protocol（Core Protocol v1.3 / Architecture Contract v1.6 / MA-1.1 · commit ccef093）
+      → Development Team 开发规范（本协议）
+        → 具体项目规范
+          → Skill / Agent / Project 自身规则
+```
+
+**Development Team 只定义开发业务领域规则**，不得覆盖或重新定义 Agent OS 的 foundational behavior（agent lifecycle / identity / context / memory/state / delegation / inter-agent communication / permission / verification / skill loading / agent initialization / recovery）。
+
+- Agent OS Protocol 是最高优先级；冲突时以 Agent OS Protocol 为准。
+- 禁止创建第二套 Agent OS Protocol。
+- 本协议定义的 Developer / Reviewer / routing / readiness / review 全部是 Agent OS 业务域实例化，不改变 Agent OS 基础执行链（Mandatory 链 + Conditional 节点）。
+
 本文是协议索引 + 核心原则。各协议细节见 `protocols/` 目录。
 
 ---

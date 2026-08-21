@@ -68,6 +68,13 @@ SIMPLE 任务若满足以下**任一**情况，不得跳过 Reviewer：
 
 > 只有「真正简单、低风险、局部修改」且不命中以上任何一条时，SIMPLE 才可走 `Understand → Implement → Test(必要) → Commit`，跳过完整 Reviewer。
 
+### 5.2 禁止自报 SIMPLE 绕过（L1，fail-closed）
+
+- **复杂度由 Main Agent 按实际特征判决，不接受 Developer / 用户「自报 SIMPLE」作为唯一依据**。
+- 若 Developer 或用户声明“这是 SIMPLE / 无需 Review”，但实际命中 §5.1 任一触发条件（涉及安全/核心逻辑/公共 API/多文件/公共行为/无法自证正确/REWORK 过/涉及 Version 发布），**一律仍必须进入完整 Reviewer**。
+- 存在疑义时 → 升档处理（宁 FEATURE 不 SIMPLE），不降档。
+- 禁止为「绕过 Reviewer」而把任务拆成多个“看似独立”的 SIMPLE 子任务；拆分会掩盖整体风险时，合并按实际风险分类。
+
 ## 6. 分支语义（Workflow 内部）
 
 | 分支 | 含义 | 动作 |
