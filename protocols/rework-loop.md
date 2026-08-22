@@ -7,10 +7,15 @@
 
 | 触发源 | 条件 | Main Agent 下一步 |
 |:--|:--|:--|
-| Reviewer | final_decision = REWORK_REQUIRED | 读 findings → 生成 rework_instruction → Developer |
+| Reviewer | final_decision = REWORK_REQUIRED | 读 findings → 生成 rework_instruction → Developer 重新 spawn |
+| Reviewer | review.status = BLOCKED | HUMAN_DECISION / ESCALATE（见 human-decision.md） |
 | Developer 自测超限 | 修复次数 > 3 | FAILED → Main Agent |
 
 > Reviewer 发现架构问题（技术方案不成立）→ 回到 Development Workflow 重新 Plan，不是让 Developer 无限修补。
+>
+> **Rework 闭环（方案 A）**：`REWORK_REQUIRED → Developer 重新 spawn（修复）→ 再次 spawn Reviewer（复审）→ APPROVED`。
+> 每次复审都是新的独立 Reviewer subagent（sessions_spawn，独立 context），不是复用上一次 Reviewer 会话；
+> **Reviewer `completed` ≠ APPROVED**，复审 APPROVED 仍由 structured review result 驱动。
 
 ## 2. Rework Instruction 格式
 
@@ -51,13 +56,14 @@ acceptance_criteria: [] # 必须满足
 Reviewer REWORK_REQUIRED
   → Main Agent 读 findings
   → 判断根因：
-      ├─ 代码质量/实现问题 → Developer 修复（普通 rework）
+      ├─ 代码质量/实现问题 → Developer 修复（普通 rework）→ 再次 spawn Reviewer（复审）
       ├─ 架构问题 → 回 Development Workflow 重新 Plan
       ├─ 需求/IDEAL 理解错误 → 回 Understand / 检查 IDEAL
       ├─ 需要用户决策 → HUMAN_DECISION_REQUIRED
+      ├─ Reviewer BLOCKED → HUMAN_DECISION / ESCALATE
       └─ 不确定 → 先尝试 Developer 修复
   → 检查 rework 次数：
-      ├─ < 3 → 重新委派 Developer
+      ├─ < 3 → 重新委派 Developer（释放旧 lease，重新 spawn）
       └─ = 3 → FAILED → Main Agent
 ```
 

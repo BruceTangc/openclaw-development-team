@@ -80,17 +80,17 @@ Main Agent
   ↓
 Development Workflow（Main Agent 自己的步骤，不 spawn）
   ↓
-Developer（DeepSeek）
+Developer（DeepSeek，独立 subagent）
   ↓
-Reviewer（独立质量闸门）
+Reviewer（独立 subagent，只读质量闸门）
   ↓
 Git / Version / Changelog / GitHub Release
 ```
 
-**只有一个独立执行体（Developer）+ 一个 Workflow 阶段（Reviewer）**：
+**两个独立执行体（Developer + Reviewer）**：
 
-- **Developer**：DeepSeek 编码，唯一 sub-agent。
-- **Reviewer**：独立质量闸门，但它是 Development Workflow 内部阶段（Main Agent 自己执行，不 spawn）。
+- **Developer**：DeepSeek 编码，唯一代码执行 sub-agent。
+- **Reviewer**：独立质量闸门 subagent（`sessions_spawn` 创建，独立 context、只读、不 commit/push），不是 Workflow 内部阶段、不由 Main Agent 自己执行。
 
 Requirement / Research / Repository Analysis / Architect / Validator 不再是独立角色，全部收敛为 Development Workflow 内部步骤或能力。
 
@@ -118,6 +118,7 @@ PROTOCOL.md                      # 协议总纲
 IMPLEMENTATION_SPEC.md           # 实现规范 + E2E 验收清单（CASE 1-10，参考）
 agents/
   developer/AGENTS.md            # Developer（DeepSeek）唯一代码执行体
+  reviewer/AGENTS.md             # Reviewer（独立 subagent，只读质量闸门）
 protocols/
   result-closure.md              # 结果闭环（P0，保留已验证机制）
   ideal-contract.md              # IDEAL 高层设计输入

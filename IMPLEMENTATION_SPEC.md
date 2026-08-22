@@ -14,12 +14,12 @@ Development Workflow（Main Agent 自己的步骤，不 spawn）
   ↓
 Developer（DeepSeek，sessions_spawn）
   ↓
-Reviewer（Workflow 内部阶段，Main Agent 执行）
+Reviewer（独立 subagent，sessions_spawn，只读）
   ↓
 Git / Version / CHANGELOG / GitHub Release（Main Agent 收尾）
 ```
 
-**只有一个独立执行体（Developer）+ 一个 Workflow 阶段（Reviewer）**。
+**两个独立执行体（Developer + Reviewer），Main Agent 只做 Orchestrator**。
 
 ---
 
@@ -65,7 +65,7 @@ Development Team **不允许擅自改变 IDEAL**。缺失/冲突/歧义/无法�
 
 > 详见 `protocols/review-adapter.md`。
 
-- Reviewer 是 Workflow 内部阶段，由 Main Agent 执行，不 spawn；检查能力迁移自 `openclaw-github-repository-reviewer`（基准 20583a7），V1 不依赖其运行。
+- Reviewer 是独立 subagent，由 Main Agent（Orchestrator）通过 `sessions_spawn` 创建（独立 context、只读），不由 Main Agent 自己执行；检查能力迁移自 `openclaw-github-repository-reviewer`（基准 20583a7），V1 不依赖其运行。
 - 强制「独立验证」子步骤（独立读代码/Git Diff、独立复跑关键测试、查边界、查 Regression、必要时加临时验证）。
 - 检查：IDEAL/Requirement、Acceptance Criteria、Implementation、Git Diff、Regression、Tests、Documentation、Unrelated Changes、Repository Review（含 Security 与 Release Readiness，6 步冻结顺序见 `review-adapter.md`）。
 - 项目交付时 Reviewer 额外执行 **GitHub Hygiene Review** 与 **Stranger User Audit**（clone 干净目录、严格按 README 复现安装/配置/Quick Start/运行/测试）；Developer 提交前必须跑 `scripts/project-readiness-check.sh`。详见 `docs/PROJECT-DELIVERY-STANDARD.md`。

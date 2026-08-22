@@ -1,7 +1,7 @@
 # V1 验收报告（最小验收）
 
 > ⚠️ **历史验收记录**：本报告记录 #6017 架构收敛前、使用独立 `repository-reviewer` agent 时期的验收证据。
-> 当前 Reviewer 已收敛为 Workflow 内部 6 步（见 `protocols/review-adapter.md`）。
+> 后续架构演进：先收敛为 Workflow 内部 6 步，**Phase 2 起 Reviewer 已收口为独立 subagent（`sessions_spawn`，见 `protocols/review-adapter.md` + `agents/reviewer/AGENTS.md`）**。
 > 阶段：Phase 2 最小验收（4 个真实测试 + 6 项实现级检查）
 > 基准架构：bc39613（冻结）→ cb6c397（架构收敛第一阶段）
 > 目标：证明 V1 核心链路能正常工作，不追求测试覆盖率
@@ -55,7 +55,7 @@
 ### 4. Release Gate ✅
 - `protocols/release.md`：5 前置条件（Test PASS + Reviewer APPROVED + clean + Version + CHANGELOG）缺一不 Release
 - `scripts/e2e_v1.py` `check_release` 断言本地 tag + GitHub release 双存在
-- Reviewer 十道 Gate（R1-R10）由 repository-reviewer skill 承载（#6017 前历史形态；当前已收敛为 Workflow 内部 6 步）
+- Reviewer 十道 Gate（R1-R10）由 repository-reviewer skill 承载（#6017 前历史形态；后收敛为 Workflow 内部 6 步，Phase 2 起收口为独立 subagent）
 
 ### 5. Repository cleanliness ✅
 - `protocols/repository-cleanliness.md`：8 项收尾检查

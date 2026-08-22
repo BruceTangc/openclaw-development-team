@@ -68,9 +68,11 @@ Development Team 是**软件开发生命周期专用 Workflow**，不是通用�
 
 ## 架构铁律（不可违反）
 
-- **Developer 是唯一独立执行 Agent**（抽象能力 `developer`，非具体模型；默认 runtime=openclaw / model=deepseek/deepseek-v4-flash，`sessions_spawn`）
-- **不 spawn Reviewer**：Reviewer 是 Workflow 内部阶段，由 Main Agent 自己执行
+- **Developer 是独立 subagent**（抽象能力 `developer`，非具体模型；默认 runtime=openclaw / model=deepseek/deepseek-v4-flash，`sessions_spawn`）
+- **Reviewer 是独立 subagent**（抽象能力 `reviewer`，`sessions_spawn` 创建，独立 context、只读、不 commit/push）：一旦任务进入 Review，必须由 Reviewer subagent 执行；**不出现 Main Agent 快查/代审 → APPROVED 的例外**
 - **不 spawn Validator**：独立验证是 Reviewer 的强制子步骤，不是独立角色
+- **Main Agent = Orchestrator**：只调度 Developer / Reviewer、接收结构化结果、决定 transition；**不执行 Reviewer logic**
+- 需 Review 才 spawn Reviewer（SIMPLE+不需 Review 可跳过）；一旦需 Review 则必须 spawn
 - 其余能力（需求理解 / Repository 分析 / Research / Plan / IDEAL）都是 Development Workflow 内部步骤，不 spawn
 
 ## 边界（与 Agent OS 不互相吞并）

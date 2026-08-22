@@ -1,27 +1,30 @@
-# protocols/review-adapter.md — Reviewer Workflow（集成后）
+# protocols/review-adapter.md — Reviewer Workflow（独立 Subagent）
 
-> V1 最终收敛：**Reviewer 是 Development Workflow 内部的阶段，由 Main Agent 自己执行，不是独立 Agent。**
+> Multi-Agent 收口（方案 A）：**Reviewer 是独立 subagent，通过 `sessions_spawn` 创建，
+> 由 Main Agent（Orchestrator）调度；Main Agent 不执行 Reviewer logic。**
 > 核心检查能力从 `openclaw-github-repository-reviewer`（基准 `20583a7`）迁移而来，
 > 但 Reviewer 本身不依赖该独立项目运行。
 > 迁移原则：只迁 Development Team 真正需要的能力，不复制历史垃圾。
 
 ## 0. Agent OS Protocol 继承声明（P0 Compliance）
 
-Reviewer 是 Development Team 的质量闸门，运行在以下协议层级之上，**继承而非覆盖** Agent OS 基础协议：
+Reviewer 是 Development Team 的独立质量闸门 subagent，运行在以下协议层级之上，**继承而非覆盖** Agent OS 基础协议：
 
 ```
 OpenClaw Runtime
   → Agent OS
     → X Agent OS Protocol（Core Protocol v1.3 / Architecture Contract v1.6 / MA-1.1 · ccef093）
       → Development Team 开发规范（PROTOCOL.md）
-        → 本 review-adapter.md（Reviewer 执行契约）
+        → 本 review-adapter.md + agents/reviewer/AGENTS.md（Reviewer 执行契约）
 ```
 
-- **Agent Identity**：Reviewer 是 Development Workflow 内部阶段，由 Main Agent 自己执行，不 spawn 独立 Agent。
-- **Delegation Chain**：Reviewer 的审查权限来自 Main Agent 委派，遵循 Agent OS Multi-Agent 委托规则；它只审查 Development Team 交付物，不继承 Main Agent 其他能力。
-- **Permission Gate**：Reviewer 只读遍历交付物 + 在受控临时目录（mktemp）执行验证，归 L0/L1；任何 L2+（发布/外发/生产变更）由 `release.md` 显式 Gate，Reviewer 不在这里授权。
+- **Agent Identity**：Role = reviewer，capability = reviewer。Reviewer 是独立 subagent（sessions_spawn），**不是 Main Agent 的模拟角色**。
+- **Delegation Chain**：Reviewer 的审查权限来自 Main Agent（Orchestrator）委派，遵循 Agent OS Multi-Agent 委托规则；只审查 DT 交付物，不继承 Main Agent 其他能力。
+- **Permission Gate**：Reviewer **只读**遍历交付物 + 在受控临时目录（mktemp）执行验证，归 L0/L1；**不改代码、不 commit、不 push**（见 agents/reviewer/AGENTS.md §3）。
 - **Verification Levels**：Reviewer 的独立验证遵循 Agent OS V0-V4 分级（独立复核高于 Developer 自测）。
 - **Protocol Compliance**：见 §3.7。Reviewer 必须验证交付物的 `x-agent-os` 声明 + Protocol Contract + Execution Record，FAIL → REJECT（禁止仅因功能测试通过而 APPROVE）。
+- **Reviewer Independence** = Context Boundary + Evidence-based Verification（见 §8）。
+- **Resource Lease**：Reviewer 作为独立 subagent 占用 resource lease（role=reviewer）；结束/超时释放（见 resource-budget.yaml + scripts/resource-gate.sh）。
 
 ---
 
@@ -56,7 +59,7 @@ Reviewer 的**正式输入边界**——只能把以下作为**事实输入**：
 
 - Reviewer 的每一次 PASS/REWORK 判定必须**至少有一项 §1 事实输入作为 evidence**，禁止用 untrusted context 替代。
 - 独立验证（§3.1）只基于「事实输入」重新推导，不复用 Developer/Main Agent 的结论。
-- **不新增 Reviewer Agent、不重新引入 repository-reviewer 独立 Agent**：保持 Main Agent + Reviewer Mode（Workflow 内部阶段）。
+- **Reviewer 是独立 subagent**：由 Main Agent（Orchestrator）通过 `sessions_spawn` 创建独立 Reviewer subagent（独立 context、只读）；**不重新引入 repository-reviewer 独立 Agent 项目**（其检查能力已迁入本仓库，见 §7），也不由 Main Agent 代审/快查。
 
 ## 2. 标准流程（6 步，冻结顺序）
 
@@ -67,7 +70,7 @@ Developer Self-Test
   ↓
 Developer Result
   ↓
-Reviewer Workflow（Main Agent 执行，非独立 Agent，不 spawn）
+Reviewer Subagent（独立 subagent，`sessions_spawn` 创建，只读，不继承 Developer 对话）
   ├─ 1. Independent Verification（强制子步骤）
   ├─ 2. Requirement / IDEAL Compliance
   ├─ 3. Code Review
@@ -225,7 +228,9 @@ review:
       evidence: "..."
       required_action: "..."
   verification:
-    tests:      { status, evidence }
+    profile:   "standard"   # reviewer 档位：fast | standard | full（下轮实现；本轮固定 standard）
+    tests:      { status, evidence }      # status: PASS|FAIL|NOT_RUN —— 仅表示「测试是否真实执行且通过」，不含覆盖充分性
+    coverage:   { status, evidence }      # status: PASS|FAIL|N/A —— 「测试/验证对需求的覆盖是否充分」（与 tests.status 区分）
     protocol:   { status, evidence }
     security:   { status, evidence }
     repository: { status, evidence }
@@ -233,6 +238,11 @@ review:
   decision:
     rationale: "..."
 ```
+
+- **tests.status 与 coverage.status 语义分离**（避免矛盾）：
+  - `tests.status` 只回答「测试系统是否真实执行且通过」（pytest 100% pass → passed，即使覆盖不足也不标 failed）。
+  - `coverage.status` 回答「测试/验证对需求的覆盖是否充分」。若测试全过但边界/需求未被覆盖（如只测正常除法、缺除零边界），`tests.status: passed` 而 `coverage.status: failed`。
+  - 禁止用 `tests.status: failed` 表达「测试虽通过但需求覆盖不足」。
 
 - **禁止 LGTM / Looks good / Approved / PASS 单独出现作为正式 Review Evidence**。
   必须 `status + verification + evidence + decision.rationale` 齐备。
@@ -293,7 +303,9 @@ review:
 
 ## 8. 禁止项
 
-- ❌ 把 Reviewer 做成独立 Agent / Runtime（Reviewer 是 Workflow 内部阶段）
+- ❌ 把 Reviewer 修为 Fixer（Reviewer 只产出 findings / required_actions，修复一律交回 Developer）
+- ❌ 实现 reviewer runtime / registry / scheduler（Reviewer 复用 OpenClaw 原生 `sessions_spawn`，不建并行 runtime/调度器）
+- ❌ 不 spawn Reviewer 而由 Main Agent 代审/快查（一旦进入 Review，必须 spawn 独立 Reviewer subagent，禁止「Main Agent 快查 → APPROVED」例外）
 - ❌ 新增 Validator Agent（独立验证是 Reviewer 子步骤，不是新角色）
 - ❌ 绕过 Reviewer（必须真实执行）
 - ❌ mock Reviewer / 只读文档算审核

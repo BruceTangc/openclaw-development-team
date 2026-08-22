@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 *_result.yaml.bak
 .tasks/*/rework-*.yaml
+
+# Resource Governance 运行时计数（Phase 2.1）
+.runtime/

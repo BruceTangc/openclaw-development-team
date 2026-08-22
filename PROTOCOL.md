@@ -26,14 +26,15 @@ OpenClaw Runtime
 
 ---
 
-## 1. 角色模型（冻结）
+## 1. 角色模型（Multi-Agent 收口）
 
-只有**一个独立执行体（Developer）+ 一个 Workflow 阶段（Reviewer）**：
+**两个独立执行体（Developer + Reviewer）+ Main Agent 只做 Orchestrator**：
 
 | 执行体 | 形态 | 关键协议 |
 |:--|:--|:--|
-| Developer | capability=developer（runtime=openclaw，implementation=native_subagent） | `agents/developer/AGENTS.md` |
-| Reviewer | Workflow 内部阶段（Main Agent 执行，不 spawn） | `review-adapter.md` |
+| Main Agent | **Orchestrator**——接收需求、调度 Developer/Reviewer、接收结构化结果、决定 transition、向用户汇报；**不执行 Reviewer logic** | `AGENTS.md` |
+| Developer | 独立 subagent（capability=developer，runtime=openclaw，implementation=native_subagent） | `agents/developer/AGENTS.md` |
+| Reviewer | **独立 subagent**（capability=reviewer，runtime=openclaw，implementation=native_subagent） | `agents/reviewer/AGENTS.md` + `review-adapter.md` |
 
 **Developer 是 Capability，不是某个具体模型。** Protocol 层面只依赖 `capability: developer`，
 不把任何具体 model 作为 Developer 身份定义：
@@ -51,7 +52,21 @@ developer:
 - Developer Capability → Runtime Adapter → Native Subagent / ACP / Other Coding Harness。
 - 切换 runtime/model 只改 deployment，不改协议与 Workflow 语义。
 
-其余能力（需求理解 / Repository 分析 / Research / Plan / IDEAL / Reviewer 检查）全部是 **Development Workflow**（Main Agent 自己执行的步骤），不是独立角色、不 spawn。
+**Reviewer 同样是 Capability + 独立 subagent，不依赖具体模型：**
+
+```yaml
+reviewer:
+  capability: reviewer            # Protocol 依赖此抽象能力
+  runtime: openclaw
+  implementation: native_subagent
+  read_only: true                 # 可读 repo/diff/测试/verify/artifact；不改代码、不 commit、不 push
+```
+
+**Reviewer 用 OpenClaw 原生 `sessions_spawn` 创建独立 subagent，独立 context**，
+不继承 Developer 的完整对话上下文；Developer output 只作为 untrusted input。
+Main Agent 永远不执行 Reviewer logic。
+
+其余能力（需求理解 / Repository 分析 / Research / Plan / IDEAL）仍是 **Development Workflow**（Main Agent 编排的步骤）。
 
 ---
 

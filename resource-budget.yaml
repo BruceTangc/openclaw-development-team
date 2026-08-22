@@ -1,0 +1,56 @@
+# resource-budget.yaml — Development Team Resource Governance 预算（Phase 2.1）
+# ============================================================================
+# 目的：在 OpenClaw Runtime 与 Development Team Workflow 之间加一层轻量资源门槛，
+#       防止多个 Agent / sessions_spawn 并发压垮服务器（CPU/RAM/进程/模型并发）。
+#
+# 核心原则：
+#   - Agent Capability ≠ Unlimited Runtime Resource
+#   - sessions_spawn ≠ 无限并发
+#   - fail-safe：资源不足时 WAIT / QUEUE / REJECT，而不是继续 spawn。
+#
+# 不实现 OpenClaw Runtime / scheduler / session / process manager / 模型 API；
+# 本预算只回答一个问题：是否允许 Development Team 发起新的 expensive execution。
+#
+# 机构：scripts/resource-gate.sh <repo> 读取本文件，返回 ALLOW / QUEUE / REJECT。
+
+resource_budget:
+  # 并发上限（软限制；超出 → QUEUE/REJECT）
+  max_active_developers: 1          # 同时最多 1 个 Developer 子代理（role=developer lease）
+  max_active_reviewers: 1           # 同时最多 1 个 Reviewer 子代理（role=reviewer lease）
+  max_active_development_tasks: 1   # 同时最多 1 个 DT 开发任务（不是 Reviewer/Developer 本身）
+
+  # ── Resource Lease 生命周期（按 role 分离） ──────────────────────────────
+  # 每个 sessions_spawn 的 Developer / Reviewer 子代理占用一条 lease（role=developer / role=reviewer），
+  # 由 scripts/resource-gate.sh 的 acquire/release 维护，租约落盘 <repo>/.runtime/leases/<role>/<session_id>。
+  #
+  # 生命周期（Orchestrator 强制执行）：
+  #   1. spawn Developer 前 acquire role=developer   → 占 1 条 developer lease
+  #   2. Developer RUNTIME_COMPLETED 后 release developer lease
+  #   3. 进入 Review 前 acquire role=reviewer        → 占 1 条 reviewer lease（不是新增 Development Task）
+  #   4. Reviewer 结束（APPROVED/REWORK_REQUIRED/BLOCKED）后 release reviewer lease
+  #
+  # 回收 stale lease（crash / timeout）：
+  #   - 每条 lease 带 timestamp；超过 lease_ttl_seconds 未心跳/未释放 → 视为 stale，
+  #     resource-gate.sh 的 `status`/`acquire` 会自动剔除 stale lease 并标记（由 Orchestrator 回收）。
+  #   - 不要把 Reviewer 当成新的 Development Task：Reviewer 计入 max_active_reviewers，
+  #     不计入 max_active_development_tasks。
+  lease_ttl_seconds: 1800           # 租约 TTL：超过即视为 stale（子代理崩溃/超时未释放时回收）
+
+  # 系统资源软限制（百分比；超出 soft → QUEUE，超出 hard → REJECT）
+  cpu_soft_limit_percent: 80        # CPU 使用率软上限
+  cpu_hard_limit_percent: 95        # CPU 使用率硬上限（触发 REJECT）
+  memory_soft_limit_percent: 80     # 内存使用率软上限
+  memory_hard_limit_percent: 90     # 内存使用率硬上限（触发 REJECT）
+
+  # 节流
+  spawn_cooldown_seconds: 10        # 连续 spawn 的最小间隔（秒）
+
+  # 超限动作
+  on_limit:
+    action: queue                   # queue | reject | block（调用方按此处理）
+    max_queue_depth: 2              # 队列深度上限
+
+# 说明
+#   - queue   ：资源稍后释放时再执行（推荐）
+#   - reject  ：拒绝本次 spawn，返回错误给调用方
+#   - 超出 hard 上限任何情况都置为 reject/block（保护服务器优先于完成任务）

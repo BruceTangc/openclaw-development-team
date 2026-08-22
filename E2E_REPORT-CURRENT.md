@@ -1,12 +1,14 @@
 # E2E Report — Development Team V1（当前架构，2026-08-21）
 
+> ⚠️ **已被 `E2E_REPORT-PHASE2.md`（2026-08-22）取代**：Phase 2 起 Reviewer 已收口为独立 subagent（`sessions_spawn`）。本报告记录的是 Reviewer 仍为 Workflow 内部阶段时的历史执行证据。
+
 > ⚠️ **当前版本证据**：本报告记录 **当前架构**（Main Agent → Development Workflow → Developer → Reviewer）下的真实执行证据。
 > 旧 `E2E_REPORT.md` 记录的是 #6017 收敛前、独立 repository-reviewer agent 时期的历史证据，**不再作为当前版本通过证据**。
 > 本报告每个测试均为真实操作，不 mock、不伪造；无法验证的项显式标 `NOT RUN`。
 
 ## 测试对象
 - 版本：`VERSION = 1.0.0`（本次 E2E 的 HEAD = 本文档提交所在 commit）
-- 架构：Main Agent / Development Workflow / Developer（唯一 sub-agent）/ Reviewer（Workflow 内部阶段）
+- 架构：Main Agent / Development Workflow / Developer（唯一 sub-agent）/ Reviewer（当时为 Workflow 内部阶段；Phase 2 起已改为独立 subagent）
 - 覆盖：Installation Context Preflight、install.sh、版本一致性、readiness-check、多 Agent discovery、用户已有修改保护
 
 ## 需求 9 E2E 清单结果
@@ -51,7 +53,7 @@
 
 | 项 | 原因 |
 |:--|:--|
-| 完整 openclaw-github-repository-reviewer 独立 agent 集成 | 当前架构 Reviewer 已收敛为 Workflow 内部阶段，非独立 agent |
+| 完整 openclaw-github-repository-reviewer 独立 agent 集成 | 历史阶段 Reviewer 为 Workflow 内部阶段，非独立 agent；Phase 2 起 Reviewer 已收口为独立 subagent（sessions_spawn） |
 | 真实 DeepSeek Developer 端到端编码（sub-agent spawn 完整闭环） | 需要真实 API key + 真实目标仓库；本 E2E 以协议存在性/readiness 边界为准，标注 NOT RUN |
 | 正式 GitHub Release / tag 创建 | 未到发布时机（需人工确认 + 全部 Release 前置条件） |
 

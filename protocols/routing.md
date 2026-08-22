@@ -48,8 +48,8 @@ Main Agent 收到需求后，按「实质特征」判断，不是按字面：
 
 ## 5. Reviewer 按风险决定
 
-- **SIMPLE**：默认不需要完整 Reviewer（低风险可跳过，或 Main Agent 快速自查）。
-- **FEATURE / COMPLEX**：Reviewer 必须执行。
+- **SIMPLE**：默认不需要 Review（低风险、局部修改且不命中 §5.1 任一触发条件 → 完全跳过 Reviewer）。**一旦命中 §5.1 任一触发条件 → 必须 spawn 独立 Reviewer subagent**，不得「Main Agent 快速自查」替代。
+- **FEATURE / COMPLEX**：Reviewer 必须执行（spawn 独立 Reviewer subagent）。
 
 ### 5.1 SIMPLE 强制 Review 触发条件（命中任一 → 必须进入完整 Reviewer）
 
@@ -81,7 +81,8 @@ SIMPLE 任务若满足以下**任一**情况，不得跳过 Reviewer：
 |:--|:--|:--|
 | HUMAN_DECISION_REQUIRED | IDEAL 缺失 / 需求不清 / 重大矛盾 | 停止，回报用户 |
 | REUSE_EXISTING_CAPABILITY | 已有相同能力 | STOP，记录复用结论 |
-| REWORK_REQUIRED | Reviewer 抓缺陷 | 回 Developer 修复（≤最大次数） |
+| REWORK_REQUIRED | Reviewer 抓缺陷 | 回 Developer 修复（≤最大次数）→ 再次 spawn Reviewer |
+| BLOCKED | Reviewer 无法验证（缺证据/缺输入）/ 协议不符 | HUMAN_DECISION / ESCALATE（见 human-decision.md） |
 | FAILED | 超限失败 | 回报 Main Agent |
 
 ## 7. 禁止项

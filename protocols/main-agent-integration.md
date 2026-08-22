@@ -6,8 +6,8 @@
 
 - **Main Agent** = OpenClaw Runtime Agent，直接面对用户。
 - **Development Workflow** = Main Agent 在 DEVELOPMENT_TASK 下承担的逻辑编排（不是独立 Agent）。
-- **Developer** = 唯一独立执行体（`sessions_spawn`）。
-- **Reviewer** = Development Workflow 内部的阶段（Main Agent 自己执行，不 spawn）。
+- **Developer** = 唯一独立代码执行体（`sessions_spawn`，capability=developer）。
+- **Reviewer** = 独立质量闸门 subagent（`sessions_spawn`，capability=reviewer，独立 context、只读），由 Main Agent（Orchestrator）调度，**不是 Workflow 内部阶段、不由 Main Agent 自己执行**。
 
 ## 2. Development Task Classification
 
@@ -35,7 +35,7 @@ Main Agent 收到用户消息后**自己判断**：
 DEVELOPMENT_TASK
   → 复杂度判断（SIMPLE/FEATURE/COMPLEX）
   → Development Workflow（Main Agent 自己的步骤）
-  → Developer（sessions_spawn）→ Reviewer
+  → Developer（sessions_spawn）→ Reviewer（sessions_spawn）
   → Git / Version / Changelog / Release
   → development_result → Main Agent → 决定是否通知用户
 ```

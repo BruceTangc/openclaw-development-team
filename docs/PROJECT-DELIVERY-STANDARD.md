@@ -185,7 +185,7 @@ Development Team 产出的任何 **Skill / Agent / Project**，在 Reviewer 判�
 
 Development Team 默认属于 **Main Agent / Team-level capability**：
 
-- **不默认分别复制安装到 Developer / Reviewer Agent**。Developer 是 Workflow 内部阶段（Main Agent 执行），Reviewer 是主 Agent 的质量闸门，都不需要独立持有 Development Team Skill。
+- **不默认分别复制安装到 Developer / Reviewer Agent**。Developer 与 Reviewer 都是被 `sessions_spawn` 的独立 subagent（capability=developer / reviewer），都不需要独立持有 Development Team Skill；Reviewer 是被 spawn 的只读质量闸门子代理，执行契约见 `agents/reviewer/AGENTS.md`。
 - **Skill 安装位置由当前 OpenClaw 实际环境动态确定**（用 `openclaw skills check` 官方 API），**严禁硬编码** `~/.openclaw/workspace/skills` 等固定路径。
 
 安装前必须运行 **多 Agent Installation Context Preflight**（`scripts/agent-context-check.sh`，只读、无副作用、不执行真实安装）：

@@ -229,12 +229,18 @@ else
   fail "Development Team 仓库缺少 agents/developer/AGENTS.md — 调用链不完整（源=$CHAIN_BASE）"
 fi
 
-# Reviewer 是 Workflow 内部阶段（非独立 Agent），非 OpenClaw agent 枚举项。
-# 验证其存在性靠 Development Team 仓库内的 review-adapter 协议。
-if [[ -f "$CHAIN_BASE/protocols/review-adapter.md" ]]; then
-  ok "Reviewer 阶段定义存在 (protocols/review-adapter.md) — 属于 Main Agent 的工作流内部阶段"
+# Reviewer 是独立 subagent（sessions_spawn 创建，capability=reviewer，只读），
+# 不是 OpenClaw 配置中的枚举 agent（与 Developer 一样是运行期 spawn 的执行体）。
+# 存在性验证靠 DT 仓库内的：1) agents/reviewer/AGENTS.md（Reviewer 执行契约）2) protocols/review-adapter.md（审查流程）。
+if [[ -f "$CHAIN_BASE/agents/reviewer/AGENTS.md" ]]; then
+  ok "调用链就绪: Main Agent → Development Team → Reviewer (agents/reviewer/AGENTS.md, 源=$CHAIN_BASE)"
 else
-  warn "Development Team 仓库缺少 protocols/review-adapter.md — Reviewer 阶段定义缺失"
+  fail "Development Team 仓库缺少 agents/reviewer/AGENTS.md — Reviewer 执行契约缺失（调用链不完整）"
+fi
+if [[ -f "$CHAIN_BASE/protocols/review-adapter.md" ]]; then
+  ok "Reviewer 审查流程定义存在 (protocols/review-adapter.md) — 独立 subagent 审查闸门"
+else
+  warn "Development Team 仓库缺少 protocols/review-adapter.md — Reviewer 审查流程定义缺失"
 fi
 
 # ─── 8 & 9. 汇总 ───

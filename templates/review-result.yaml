@@ -19,7 +19,9 @@ review:
       evidence: ""           # 必须引用 §1 事实输入（git diff / 测试结果 / 仓库状态 / 执行证据 / 产物）
       required_action: ""
   verification:
-    tests:      { status: "", evidence: "" }   # status: PASS | FAIL | NOT_RUN
+    profile: "standard"      # reviewer 档位：fast | standard | full（见 review-adapter §review_profiles）
+    tests:      { status: "", evidence: "" }   # status: PASS | FAIL | NOT_RUN —— 仅表示「测试是否真实执行且通过」，不含覆盖充分性
+    coverage:   { status: "", evidence: "" }   # status: PASS | FAIL | N/A —— 「测试/验证对需求的覆盖是否充分」（避免与 tests.status 冲突）
     protocol:   { status: "", evidence: "" }
     security:   { status: "", evidence: "" }
     repository: { status: "", evidence: "" }

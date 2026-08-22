@@ -30,6 +30,29 @@ Main Agent → sessions_spawn → Developer 执行 → completion/announce（age
 - 只有 artifact + verification + review 全部通过后才 `IMPLEMENTATION_VERIFIED`，最终 `PROJECT_READY`。
 - 仅返回「完成了」而无结构化 Artifact → `RUNTIME_FAILED`，不得视为完成。
 
+#### 3.1.1 Developer → Reviewer 状态转换（方案 A，Multi-Agent 收口）
+
+```
+RUNTIME_COMPLETED(Developer)                    # Developer subagent 会话结束，只表示“运行结束”
+  → 收到结构化 Artifact（implementation_result） # 否则 → RUNTIME_FAILED
+  → ARTIFACT_PENDING_VERIFICATION               # 产物待验证
+  → 【Resource Gate】（scripts/resource-gate.sh：释放 Developer lease，获取 Reviewer lease）
+  → spawn Reviewer（sessions_spawn，独立 context，只读）
+  → REVIEWING
+  → structured review result（review.status + findings + verification + evidence + decision.rationale）
+      ├─ APPROVED        → IMPLEMENTATION_VERIFIED → PROJECT_READY（按需）
+      ├─ REWORK_REQUIRED → Developer 重新 spawn → 再次 spawn Reviewer → APPROVED（见 rework-loop.md）
+      └─ BLOCKED         → HUMAN_DECISION / ESCALATE（见 human-decision.md）
+```
+
+- **Reviewer `completed` ≠ APPROVED**：Reviewer subagent 会话结束（RUNTIME_COMPLETED）只表示“审查跑完”，
+  最终 APPROVED / REWORK_REQUIRED / BLOCKED 由 **structured review result** 驱动（含 evidence + decision rationale），
+  不是由 Reviewer 会话是否结束决定。
+- **Main Agent 不执行 Reviewer logic**：一旦进入 Review，必须 spawn 独立 Reviewer subagent；
+  禁止「Main Agent 快查 → APPROVED」例外。
+- **Developer lease 释放后再获取 Reviewer lease**（按 role 分离，见 resource-budget.yaml + resource-gate.sh）；
+  Reviewer crash/timeout → 回收或标记 stale lease，由 Orchestrator 处理（见 §5 Recovery）。
+
 ## 4. 回传机制
 
 - 回传**默认靠 announce 链**，不要求 Developer 用 sessions_send（原生 sub-agent 无此工具）。

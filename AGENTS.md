@@ -1,27 +1,34 @@
 # Development Team V1 — Main Agent 编排入口
 
-> 架构已收敛（V1 冻结）。这是 Main Agent 处理开发需求时的唯一入口。
-> 不再有 7 个独立角色。只有 **Developer** 一个独立执行体；**Reviewer 是 Workflow 内部阶段**（Main Agent 执行），其余能力并入 **Development Workflow**（Main Agent 自己执行的工作流步骤）。
+> Multi-Agent 收口。Main Agent 是 **Orchestrator**（不执行 Reviewer logic），
+> Developer 与 Reviewer 都是独立 subagent（sessions_spawn）。
 
-## 1. 角色模型（冻结）
+## 1. 角色模型（Multi-Agent 收口）
 
 ```
 用户需求
   ↓
-Main Agent（= Development Workflow 编排者）
+Main Agent（= Orchestrator：调度 Developer / Reviewer，不亲自 Review）
   ├─ 复杂度判断：SIMPLE / FEATURE / COMPLEX
-  ├─ Development Workflow（Main Agent 自己执行，不 spawn）
+  ├─ Development Workflow（Main Agent 编排步骤：需求/分析/Plan/调度）
   ↓
-Developer（capability=developer，唯一代码执行体，sessions_spawn）
+Developer（独立 subagent，capability=developer，sessions_spawn）
+  ├─ 改代码 / 写测试 / 跑测试
   ↓
-Reviewer（独立质量闸门，Workflow 内部阶段，Main Agent 执行）
+Reviewer（独立 subagent，capability=reviewer，sessions_spawn）
+  ├─ 独立 context，只读，验证 Developer artifact
+  ↓
+structured review result（APPROVED / REWORK_REQUIRED / BLOCKED）
   ↓
 Git / Version / CHANGELOG / GitHub Release（Main Agent 收尾）
 ```
 
-- **Developer**：抽象能力 `developer`（非具体模型），默认 runtime=openclaw / implementation=native_subagent / model=deepseek/deepseek-v4-flash（仅默认实现）。完整定义见 `agents/developer/AGENTS.md`。
-- **Reviewer**：Workflow 内部阶段，Main Agent 执行，**不 spawn、不新增 Agent**。完整定义见 `protocols/review-adapter.md`。
-- Development Workflow / Reviewer 都**不是 Agent**，禁止为这些步骤单独 spawn 子代理。
+- **Developer**：独立 subagent，抽象能力 `developer`（非具体模型），默认 runtime=openclaw / implementation=native_subagent / model=deepseek/deepseek-v4-flash（仅默认实现）。完整定义见 `agents/developer/AGENTS.md`。
+- **Reviewer**：独立 subagent，抽象能力 `reviewer`，通过 OpenClaw 原生 `sessions_spawn` 创建，独立 context、不继承 Developer 完整对话、只读、不 commit/push。完整定义见 `agents/reviewer/AGENTS.md` + `protocols/review-adapter.md`。
+- **Main Agent 是 Orchestrator**：接收需求 → 启动 workflow → `sessions_spawn` 调度 Developer / Reviewer → 接收结构化结果 → 决定 transition → 向用户汇报。**Main Agent 永远不执行 Reviewer logic。**
+- **Review 进入规则**：只有「需要 Review」的任务才 spawn Reviewer；一旦进入 Review，必须由 Reviewer subagent 执行，不得出现「Main Agent 快查 → APPROVED」的例外。
+  - SIMPLE + 不需要 Review → 不 spawn Reviewer
+  - SIMPLE + 需要 Review / FEATURE / COMPLEX → spawn Reviewer
 
 ## 2. 复杂度判断（三档任务模型）
 
@@ -54,12 +61,13 @@ Understand（需求理解）→ IDEAL（仅 COMPLEX，见 `ideal-contract.md`）
 - 完成必须跑测试；FAIL→修复→再测（≤3 次）；超限→FAILED。不负责最终 commit；禁止自动 push。
 - **只能宣布 `IMPLEMENTATION COMPLETE`（自述边界），不得宣布 `PROJECT COMPLETE`**。
 
-## 6. Reviewer（独立质量闸门）
+## 6. Reviewer（独立 Subagent）
 
-见 `protocols/review-adapter.md`。要点：
-- Workflow 内部阶段，不 spawn；与 Developer 判断**相对独立**，不默认相信「tests pass」。
+见 `agents/reviewer/AGENTS.md` + `protocols/review-adapter.md`。要点：
+- **独立 subagent**（`sessions_spawn` 创建，独立 context），不是 Workflow 内部阶段；与 Developer 判断**相对独立**，不默认相信「tests pass」。
 - 只基于事实输入（Requirement/Acceptance/Actual Diff/Repo State/Test Results/Execution Evidence/Developer Artifact）判定；不把 Developer/Main Agent 自评当 evidence。
 - 输出 `review.status: approved | rework_required | blocked` + findings + verification + decision rationale（禁止 LGTM/Approved 单独作为 evidence，见 `templates/review-result.yaml`）。
+- 需 Review 才 spawn Reviewer（Main Agent 不代审）；一旦进入 Review 必须由 Reviewer subagent 执行。
 
 ## 7. Git / Version / Release（Main Agent 收尾）
 

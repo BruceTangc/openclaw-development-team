@@ -405,6 +405,25 @@ else
   warn "⚠️  缺少 dt-version.sh，无法报告版本链"
 fi
 
+# ─── Resource Governance 验证（Phase 2.1）───
+# 轻量资源门槛：resource-budget.yaml + resource-gate.sh。安装后确认预算就位且资源条件可评估。
+info ""
+info "=== Resource Governance（Phase 2.1）==="
+if [[ -f "$DT_DIR/resource-budget.yaml" ]] && [[ -f "$DT_DIR/scripts/resource-gate.sh" ]]; then
+  info "✅ resource-budget.yaml 已安装（可配置资源预算）"
+  info "✅ resource-gate.sh 已安装（轻量资源门：ALLOW/QUEUE/REJECT）"
+  # 运行一次资源门（只读，报告当前能否发起 DT 任务）
+  RG_RC=0
+  bash "$DT_DIR/scripts/resource-gate.sh" "$DT_DIR" || RG_RC=$?
+  case "$RG_RC" in
+    0) info "✅ 当前资源充足 — DT 可发起任务（ALLOW）" ;;
+    1) warn "⚠️  当前资源软超限 — DT 任务将入队等待（QUEUE）；详见上方 resource-gate 输出" ;;
+    2) warn "⚠️  当前资源达到硬上限 — 需释放资源后才能发起 DT 任务（REJECT）；请检查服务器内存/CPU" ;;
+  esac
+else
+  warn "⚠️  resource-budget.yaml 或 resource-gate.sh 缺失 — Resource Governance 未启用（建议补装）"
+fi
+
 # ─── 结果 ───
 echo ""
 if [[ "$PASS" == "true" ]]; then
