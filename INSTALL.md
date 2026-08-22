@@ -92,20 +92,24 @@ bash install.sh --skip-preflight
 安装完成后，安装器会自动运行 smoke test。你也可以手动验证：
 
 ```bash
+# 以下 <workspace> / <shared-skills> 为占位符：实际值必须以 install.sh 输出为准（动态解析），
+# 不要直接复制这些示例路径。典型默认：<workspace>≈~/.openclaw/workspace/<agent-id>，
+# <shared-skills>≈~/.openclaw/skills。
+
 # 1. 检查文件结构
-ls ~/.openclaw/workspace/openclaw-development-team/
+ls <workspace>/openclaw-development-team/
 # 应包含: AGENTS.md PROTOCOL.md protocols/ scripts/ templates/ agents/ skills/
 
-# 2. 检查 Skill
-cat ~/.openclaw/workspace/skills/development-team/SKILL.md
+# 2. 检查 Skill（shared managed skills）
+cat <shared-skills>/development-team/SKILL.md
 # 应包含: name: development-team
 
 # 3. 检查脚本可执行
-ls -la ~/.openclaw/workspace/openclaw-development-team/scripts/*.sh
+ls -la <workspace>/openclaw-development-team/scripts/*.sh
 # 应有 x 权限
 
-# 4. 测试 Reviewer 辅助脚本
-bash ~/.openclaw/workspace/openclaw-development-team/scripts/check-hygiene.sh ~/.openclaw/workspace
+# 4. 测试 Reviewer 辅助脚本（仓库路径以实际安装为准）
+bash <workspace>/openclaw-development-team/scripts/check-hygiene.sh <workspace>
 # 应输出: HYGIENE_FOUND=0 (clean)
 ```
 
@@ -173,13 +177,14 @@ ssh -T git@github.com
 ## 卸载
 
 ```bash
-bash ~/.openclaw/workspace/openclaw-development-team/uninstall.sh
+# <workspace> 为安装目标占位符，实际值以 install.sh 输出为准
+bash <workspace>/openclaw-development-team/uninstall.sh
 ```
 
 或指定 workspace：
 
 ```bash
-bash ~/.openclaw/workspace/openclaw-development-team/uninstall.sh --workspace /path/to/workspace
+bash <workspace>/openclaw-development-team/uninstall.sh --workspace /path/to/your/workspace
 ```
 
 卸载器会：
@@ -209,8 +214,8 @@ bash ~/.openclaw/workspace/openclaw-development-team/uninstall.sh --workspace /p
 ### 脚本权限不足
 
 ```bash
-chmod +x ~/.openclaw/workspace/openclaw-development-team/scripts/*.sh
-chmod +x ~/.openclaw/workspace/openclaw-development-team/scripts/*.py
+chmod +x <workspace>/openclaw-development-team/scripts/*.sh
+chmod +x <workspace>/openclaw-development-team/scripts/*.py
 ```
 
 ### gh CLI 未认证
