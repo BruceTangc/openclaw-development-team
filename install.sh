@@ -241,6 +241,20 @@ install_files() {
     (cd "$src" && tar --exclude='.git' -cf - .) | tar -xf - -C "$DT_DIR"
   fi
 
+  # 版本链 manifest（P0 交付一致性：让安装副本可报告 commit / installed_at）
+  # 只在本次实际写入时更新；已存在目录不覆盖文件，但 manifest 始终刷新到最新安装源。
+  if [[ -d "$DT_DIR" ]]; then
+    local _commit="unknown"
+    if git -C "$src" rev-parse HEAD >/dev/null 2>&1; then
+      _commit="$(git -C "$src" rev-parse HEAD)"
+    elif [[ -f "$src/.git/HEAD" ]]; then
+      _commit="$(tr -d '[:space:]' < "$src/.git/HEAD" 2>/dev/null)"
+    fi
+    printf '%s' "$_commit" > "$DT_DIR/VERSION_COMMIT"
+    date +%Y-%m-%dT%H:%M:%S%z > "$DT_DIR/INSTALLED_AT"
+    info "版本链 manifest 已写入: VERSION_COMMIT=$_commit"
+  fi
+
   # 2. 安装 Skill 入口（不覆盖已有）
   mkdir -p "$SKILL_DIR"
   if [[ -f "$SKILL_DIR/SKILL.md" ]]; then
@@ -323,12 +337,56 @@ else
   info "✅ 无个人绝对路径"
 fi
 
-# 7. Skill 可被 OpenClaw 发现
-if [[ -d "$SKILL_PARENT" ]]; then
-  SKILL_COUNT=$(find "$SKILL_PARENT" -name "SKILL.md" 2>/dev/null | wc -l)
-  info "✅ Skills 目录存在 ($SKILL_PARENT)，共 $SKILL_COUNT 个 skill"
+# 7. OpenClaw Discovery / Eligibility（P0-6：SKILL.md exists ≠ 安装成功）
+# 三层判定：installed（文件就位）→ discovered（OpenClaw 可见）→ eligible（可被 Agent 使用）。
+# 优先用 openclaw skills info 官方 discovery API，不自己解析 OpenClaw 内部文件实现第二套 discovery。
+SKILL_NAME="development-team"
+DISCOVERED=false
+ELIGIBLE=false
+if command -v openclaw >/dev/null 2>&1; then
+  SKILL_INFO="$(openclaw skills info "$SKILL_NAME" --json 2>/dev/null)"
+  if [[ -n "$SKILL_INFO" ]]; then
+    INFO_ELIGIBLE="$(echo "$SKILL_INFO" | python3 -c "import sys,json;
+try: d=json.load(sys.stdin); print(str(d.get('eligible','')).lower())
+except: print('')" 2>/dev/null)"
+    INFO_PATH="$(echo "$SKILL_INFO" | python3 -c "import sys,json;
+try: d=json.load(sys.stdin); print(d.get('filePath','') or '')
+except: print('')" 2>/dev/null)"
+    if [[ -n "$INFO_PATH" ]]; then
+      DISCOVERED=true
+      info "✅ OpenClaw 发现 skill（discovered）: $INFO_PATH"
+      if [[ "$INFO_ELIGIBLE" == "true" ]]; then
+        ELIGIBLE=true
+        info "✅ Skill eligible（Agent 可使用）"
+      else
+        warn "⚠️  Skill 被发现但 not eligible（eligible=$INFO_ELIGIBLE）— 检查 allowlist / agent filter / requirements"
+      fi
+    fi
+  fi
+  # fallback：skills check --agent（显式指定 main agent，避免落到 CLI 默认 agent 如宝总）
+  if [[ "$DISCOVERED" != "true" && -n "$MAIN_AGENT" ]]; then
+    if openclaw skills check --agent "$MAIN_AGENT" --json 2>/dev/null | python3 -c "import sys,json;
+try:
+ d=json.load(sys.stdin); sys.exit(0 if '$SKILL_NAME' in d.get('eligible',[]) else 1)
+except: sys.exit(1)" 2>/dev/null; then
+      DISCOVERED=true; ELIGIBLE=true
+      info "✅ Skill discovered + eligible（skills check --agent $MAIN_AGENT）"
+    fi
+  fi
 else
-  warn "⚠️  Skills 目录不存在 ($SKILL_PARENT)"
+  warn "⚠️  openclaw CLI 不可用 — 无法做 discovery/eligibility 验证（LEGACY FALLBACK）"
+fi
+
+if [[ "$DISCOVERED" == "true" ]]; then
+  if [[ "$ELIGIBLE" == "true" ]]; then
+    info "✅ Discovery Verification: installed + discovered + eligible 全部通过"
+  else
+    warn "⚠️  Discovery Verification: installed + discovered，但 not eligible — 安装不完整，请检查"
+  fi
+else
+  # 最终发现不到 → FAIL（不能 copy succeeded → PASS）
+  error "❌ OpenClaw 未发现 development-team skill（discovered=false）— 安装不成功；SKILL.md exists 不足以判定安装成功"
+  PASS=false
 fi
 
 # 7b. 项目交付就绪检查脚本存在且可执行
@@ -336,6 +394,15 @@ if [[ -f "$DT_DIR/scripts/project-readiness-check.sh" ]] && [[ -x "$DT_DIR/scrip
   info "✅ 项目交付就绪检查脚本: project-readiness-check.sh"
 else
   warn "⚠️  project-readiness-check.sh 缺失或不可执行（非致命）"
+fi
+
+# ─── 版本链报告（P0 交付一致性）───
+info ""
+info "=== Development Team Version Chain ==="
+if [[ -f "$DT_DIR/scripts/dt-version.sh" ]]; then
+  bash "$DT_DIR/scripts/dt-version.sh" "$DT_DIR" || warn "版本链部分字段缺失（commit/installed_at 未落盘），见上"
+else
+  warn "⚠️  缺少 dt-version.sh，无法报告版本链"
 fi
 
 # ─── 结果 ───

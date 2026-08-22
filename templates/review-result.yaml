@@ -7,6 +7,26 @@ type: review_result
 task_id: ""
 review_id: ""
 
+# ── P0-5 正式 Review Result Schema（冻结，禁止 LGTM/Looks good/Approved/PASS 单独作为 evidence）──
+# status+verification+evidence+decision.rationale 缺一不可；evidence 遵循 Agent OS Evidence schema
+# （source/timestamp/status ∈ UNVERIFIED|PARTIALLY_VERIFIED|VERIFIED|DISPUTED|OBSOLETE），不另造模型。
+review:
+  status: ""                 # approved | rework_required | blocked
+  findings:
+    - id: "FIND-001"
+      severity: ""           # P0 | P1 | P2 | P3
+      category: ""           # correctness | security | protocol | test | repository | readiness
+      evidence: ""           # 必须引用 §1 事实输入（git diff / 测试结果 / 仓库状态 / 执行证据 / 产物）
+      required_action: ""
+  verification:
+    tests:      { status: "", evidence: "" }   # status: PASS | FAIL | NOT_RUN
+    protocol:   { status: "", evidence: "" }
+    security:   { status: "", evidence: "" }
+    repository: { status: "", evidence: "" }
+    readiness:  { status: "", evidence: "" }
+  decision:
+    rationale: ""             # 必须给出判定理由，不能只写 LGTM / Looks good / Approved / PASS
+
 # Reviewer 执行状态：COMPLETED | INCOMPLETE | BLOCKED
 status: ""
 
@@ -108,9 +128,12 @@ protocol_compliance:
       note: ""
   blocking_reason: []        # FAIL 时的阻断原因
 
-# ── finding 结构（从 RR schemas/finding.json 迁移，去 gate 化）───────────
+# ── finding 结构（从 RR schemas/finding.json 迁移，去 gate 化，P0-5 增加 category）───────────
 # 每项 finding 形如：
-#   severity: P0 | P1 | P2     # P0=安全/破坏性 → 直接 REWORK_REQUIRED；P1=必须修复；P2=建议
+#   id: FIND-xxx                    # 唯一 id（P0-5 新增）
+#   severity: P0 | P1 | P2 | P3     # P0=安全/破坏性 → 直接 REWORK_REQUIRED；P1=必须修复；P2/P3=建议
+#   category: correctness | security | protocol | test | repository | readiness   # P0-5 新增
+#   evidence: "..."                 # 必须引用事实输入，禁止用 Developer/Main Agent 自评替代
 #   file: <path>
 #   message: "..."
 #   required_action: "..."

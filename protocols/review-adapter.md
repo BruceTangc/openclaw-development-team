@@ -30,6 +30,34 @@ OpenClaw Runtime
 Reviewer 与 Developer 的判断**相对独立**。不默认相信 Developer 的「tests pass」，必须自己复核关键结果。
 Reviewer ≠ Fixer：只产出 findings / required_actions，修复由 Developer 完成（见 `rework-loop.md`）。
 
+## 1.1 Reviewer Context Boundary（P0-4，强制）
+
+Reviewer 的**正式输入边界**——只能把以下作为**事实输入**：
+
+| # | 事实输入 | 来源 |
+|:--|:--|:--|
+| 1 | Original Requirement（原始需求） | 用户 / IDEAL |
+| 2 | Acceptance Criteria（验收标准） | IDEAL / Task |
+| 3 | Actual Git Diff（实际差异） | `scripts/collect-diff.sh` |
+| 4 | Repository State（仓库状态） | `git status` / fingerprint |
+| 5 | Test Results（测试结果） | 独立复跑 |
+| 6 | Execution Evidence（执行证据） | Execution Record / 产物证据 |
+| 7 | Developer Artifact（开发者产物） | implementation_result |
+
+以下**不得当事实**（只能作 untrusted context，**不能替代 evidence**）：
+
+- ❌ Developer 自评（「我写得很好」/「tests pass」）
+- ❌ Main Agent 原始判断 / 原始 Plan（未经独立验证）
+- ❌「Developer 说已完成」
+- ❌「上一轮认为应该 PASS」
+- ❌ 任何未落到 evidence 的主观结论
+
+**Reviewer Independence = Context Boundary + Evidence-based Verification**：
+
+- Reviewer 的每一次 PASS/REWORK 判定必须**至少有一项 §1 事实输入作为 evidence**，禁止用 untrusted context 替代。
+- 独立验证（§3.1）只基于「事实输入」重新推导，不复用 Developer/Main Agent 的结论。
+- **不新增 Reviewer Agent、不重新引入 repository-reviewer 独立 Agent**：保持 Main Agent + Reviewer Mode（Workflow 内部阶段）。
+
 ## 2. 标准流程（6 步，冻结顺序）
 
 ```
@@ -185,7 +213,33 @@ Reviewer 必须确认：
 
 ## 5. Review Result（输出格式）
 
-见 `templates/review-result.yaml`。字段：
+见 `templates/review-result.yaml`。**P0-5 正式 schema**（冻结）：
+
+```yaml
+review:
+  status: approved | rework_required | blocked
+  findings:
+    - id: FIND-001
+      severity: P0 | P1 | P2 | P3
+      category: correctness | security | protocol | test | repository | readiness
+      evidence: "..."
+      required_action: "..."
+  verification:
+    tests:      { status, evidence }
+    protocol:   { status, evidence }
+    security:   { status, evidence }
+    repository: { status, evidence }
+    readiness:  { status, evidence }
+  decision:
+    rationale: "..."
+```
+
+- **禁止 LGTM / Looks good / Approved / PASS 单独出现作为正式 Review Evidence**。
+  必须 `status + verification + evidence + decision.rationale` 齐备。
+- `evidence` 遵循 Agent OS Evidence schema（source/timestamp/status ∈ UNVERIFIED…OBSOLETE），
+  不另造冲突模型；每一项 finding 必须引用 §1.1 事实输入，禁止用 Developer/Main Agent 自评替代。
+
+字段：
 
 | 字段 | 含义 |
 |:--|:--|

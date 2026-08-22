@@ -20,6 +20,16 @@ Main Agent → sessions_spawn → Developer 执行 → completion/announce（age
 - `Status` 由 runtime 派生（ok/error/timeout/unknown），非文本推断。
 - 结果必须结构化（Implementation Result），禁止只返回「完成了」。
 
+### 3.1 completion ≠ task success（P0-3）
+
+- **OpenClaw session completion 只表示「子会话运行结束」，不代表任务成功。**
+- `sessions_spawn completed` ≠ implementation passed ≠ task completed。
+- 状态链（domain projection，见 PROTOCOL.md §4）：
+  `DELEGATED → RUNNING → RUNTIME_COMPLETED → ARTIFACT_PENDING_VERIFICATION → REVIEWING → APPROVED`；
+  失败态为 `RUNTIME_FAILED`（而非直接 IMPLEMENTATION_COMPLETED）。
+- 只有 artifact + verification + review 全部通过后才 `IMPLEMENTATION_VERIFIED`，最终 `PROJECT_READY`。
+- 仅返回「完成了」而无结构化 Artifact → `RUNTIME_FAILED`，不得视为完成。
+
 ## 4. 回传机制
 
 - 回传**默认靠 announce 链**，不要求 Developer 用 sessions_send（原生 sub-agent 无此工具）。

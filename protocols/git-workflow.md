@@ -2,6 +2,10 @@
 
 > Development Team 必须保护 Repository。**不破坏用户已有修改是第一原则。**
 
+> **CNF-5 继承声明**：本节安全约束（force push / reset / history rewrite / dirty state / untracked 保护）
+> 是 **Agent OS destructive-action rule（ACTION-PROTOCOL §1/§3：不可逆自动升风险级 + 需显式审批）的 Git 领域特化**，
+> 不是重复定义；DT 只把通用 destructive-action 规则具体化为 Git 场景（force push/reset --hard/checkout 覆盖/改历史）。
+
 ## 1. 开发前必须记录（Baseline Snapshot）
 
 在动任何文件前，记录：

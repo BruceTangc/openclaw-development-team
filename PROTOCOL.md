@@ -1,7 +1,7 @@
 # PROTOCOL.md — Development Team V1 协议总纲
 
 > 架构已收敛。V1 = 一个自动化软件开发流水线，角色模型固定为：
-> `Main Agent → Development Workflow → Developer（DeepSeek）→ Reviewer → Git/Version/Changelog/Release`。
+> `Main Agent → Development Workflow → Developer（capability=developer）→ Reviewer → Git/Version/Changelog/Release`。
 
 ## 0. X Agent OS Protocol 继承声明（P0 Compliance）
 
@@ -32,8 +32,24 @@ OpenClaw Runtime
 
 | 执行体 | 形态 | 关键协议 |
 |:--|:--|:--|
-| Developer | DeepSeek sub-agent（sessions_spawn） | `agents/developer/AGENTS.md` |
+| Developer | capability=developer（runtime=openclaw，implementation=native_subagent） | `agents/developer/AGENTS.md` |
 | Reviewer | Workflow 内部阶段（Main Agent 执行，不 spawn） | `review-adapter.md` |
+
+**Developer 是 Capability，不是某个具体模型。** Protocol 层面只依赖 `capability: developer`，
+不把任何具体 model 作为 Developer 身份定义：
+
+```yaml
+developer:
+  capability: developer           # Protocol 只依赖此抽象能力
+  runtime: openclaw               # 或 acp
+  implementation: native_subagent # 或 codex / claude-code
+  model: deepseek/deepseek-v4-flash  # 仅当前 default implementation，非 protocol requirement
+```
+
+- `model` 字段属于 deployment/config 层，是**默认实现**，不是协议约束；协议不得把
+  `model="deepseek/..."` 当作 Developer 身份定义。
+- Developer Capability → Runtime Adapter → Native Subagent / ACP / Other Coding Harness。
+- 切换 runtime/model 只改 deployment，不改协议与 Workflow 语义。
 
 其余能力（需求理解 / Repository 分析 / Research / Plan / IDEAL / Reviewer 检查）全部是 **Development Workflow**（Main Agent 自己执行的步骤），不是独立角色、不 spawn。
 
@@ -76,24 +92,35 @@ OpenClaw Runtime
 
 ---
 
-## 4. 状态机（最小）
+## 4. 状态机（Development Task 状态，P0-3 收口）
+
+> 本状态机是 **Agent OS task-manager state machine 的 software-development domain projection**，
+> 不重新定义 Agent OS task lifecycle；只把「软件开发子会话」的完成语义映射到 Agent OS 任务状态。
+> 关键语义（P0-3）：**OpenClaw session completion ≠ task success**。
+> `sessions_spawn completed` 只表示「子会话运行结束」，不代表任务成功。
 
 ```
-NEW → DELEGATED → WAITING_RESULT → IMPLEMENTATION_COMPLETED → REVIEWING → APPROVED/DONE
-                                    ↘ FAILED/TIMEOUT → RECOVERY
-REVIEWING → REWORK_REQUIRED → (rework) → WAITING_RESULT
+NEW → DELEGATED → RUNNING → RUNTIME_COMPLETED → ARTIFACT_PENDING_VERIFICATION → REVIEWING → APPROVED / DONE
+                            ↘ RUNTIME_FAILED / TIMEOUT → RECOVERY
+REVIEWING → REWORK_REQUIRED → (rework) → RUNNING
 ```
 
-| 起始 | 事件 | 目标 |
-|:--|:--|:--|
-| NEW | 填 Task + Delegation | DELEGATED |
-| DELEGATED | sessions_spawn 成功 | WAITING_RESULT |
-| WAITING_RESULT | completion(completed) | IMPLEMENTATION_COMPLETED |
-| WAITING_RESULT | completion(failed) / 不可达 | FAILED |
-| WAITING_RESULT | 超时 | TIMEOUT → RECOVERY |
-| IMPLEMENTATION_COMPLETED | 提交 Reviewer | REVIEWING |
-| REVIEWING | APPROVED | DONE |
-| REVIEWING | REWORK_REQUIRED | REWORK → WAITING_RESULT |
+| 起始 | 事件 | 目标 | 语义 |
+|:--|:--|:--|:--|
+| NEW | 填 Task + Delegation | DELEGATED | 目标已固化，准备委派 |
+| DELEGATED | sessions_spawn 成功 | RUNNING | 子会话已在运行 |
+| RUNNING | completion(completed) | RUNTIME_COMPLETED | **仅表示子会话运行结束，≠ 任务成功** |
+| RUNNING | completion(failed) / 不可达 | RUNTIME_FAILED | 运行期失败，≠ 直接 IMPLEMENTATION_COMPLETED |
+| RUNNING | 超时 | TIMEOUT → RECOVERY | 走 result-closure 阶梯 |
+| RUNTIME_COMPLETED | 收到结构化 Artifact（implementation_result） | ARTIFACT_PENDING_VERIFICATION | 产物待验证 |
+| RUNTIME_COMPLETED | 无结构化 Artifact / 仅「完成了」 | RUNTIME_FAILED | 无产物不得视为完成 |
+| ARTIFACT_PENDING_VERIFICATION | 提交 Reviewer | REVIEWING | 进入质量闸门 |
+| REVIEWING | APPROVED | IMPLEMENTATION_VERIFIED → PROJECT_READY（按需） | 仅 artifact+verification+review 全过才 IMPLEMENTATION_VERIFIED |
+| REVIEWING | REWORK_REQUIRED | REWORK → RUNNING | 回退重做 |
+
+> `IMPLEMENTATION_COMPLETED` 只作为 Developer 的**自述边界**（「实现+自测完成」），
+> 不再是 Workflow 的 task success 状态。只有 artifact + verification + review 全部通过后，
+> 才 `IMPLEMENTATION_VERIFIED`，最终 `PROJECT_READY`（见 `result-closure.md`）。
 
 ---
 

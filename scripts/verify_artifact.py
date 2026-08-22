@@ -13,9 +13,17 @@ P0-1 Verifier Hardening：用结构化 YAML parser 校验 x-agent-os 声明值�
 
 退出码:
     0 = PASS（或全部合法 N/A）
-    1 = FAIL（值非法 / 缺关键结构 / 自然语言绕过 / ER 缺证据）
-    2 = WARN（存在需 Reviewer 人工确认的 N/A，不自动阻断）
+    1 = FAIL（值非法 / 缺关键结构 / 结构化声明为否定 / ER 缺证据）
+    2 = WARN（存在需 Reviewer 人工确认的 N/A / missing structured evidence，不自动阻断）
     3 = 用法错误 / 目录不存在
+
+职责边界（P0-2）：本 validator 只做"值校验"与"结构校验"，不做自然语言语义判断。
+    error/recovery/communication 判定依赖结构化字段：
+        error_handling: {declared: true}
+        recovery:       {declared: true, mechanism: retry}
+        communication:  {parallel_runtime: false}
+    历史 artifact 缺这些结构化字段 → 标注 missing structured evidence 交 Reviewer，
+    不因正文出现/未出现某关键词而 FAIL，也不为兼容继续堆自然语言 Regex。
 
 判定语义（对齐 Agent OS Contract）:
     应经过但未经过 → FAIL；Contract 条件性跳过且注明 → 不 FAIL；
@@ -44,43 +52,10 @@ DELEGATION_KEYS = {"max_level", "inherit_parent", "requires_scope", "scope", "de
 MAX_LEVEL_VALUES = {"L0", "L1", "L2", "L3", "L4"}
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)?$")
 
-# Agent OS 禁止的并行 runtime 组件（Communication 结构校验，P0-5）
-FORBIDDEN_RUNTIME = {
-    "parallel_runtime", "own_scheduler", "scheduler", "event bus", "event_bus",
-    "task runtime", "task_runtime", "memory runtime", "memory_runtime",
-    "permission runtime", "permission_runtime", "agent runtime", "agent_runtime",
-    "context engine", "context_engine",
-}
-
-# 强否定错误处理词（一票 FAIL：明确表示不处理错误/吞掉失败）
-NEG_ERROR_HARD = [
-    "no error handling", "without error handling", "silently ignored",
-    "no error is handled", "errors are ignored", "error.*ignored by design",
-    "fail silently",
-]
-# 弱否定错误处理词（有替代回传机制则豁免）
-NEG_ERROR_SOFT = [
-    "no retry", "no error recovery", "ignore error", "never recover",
-    "without recovery", "no recovery",
-]
-# 强否定恢复词（一票 FAIL：明确无恢复/永不重试）
-NEG_RECOVERY_HARD = [
-    "never retries", "never recover", "no recovery path",
-    "no recovery mechanism", "fail silently", "TODO recovery",
-    "no recovery is (implemented)?",
-]
-# 弱否定恢复词（有替代机制则豁免）
-NEG_RECOVERY_SOFT = [
-    "no retry", "no recovery", "no auto retry", "won't retry",
-    "does not retry", "not retried",
-]
-# 错误/恢复的替代机制（豁免条件）
-RECOVERY_MECH = [
-    r"report[^\n]{0,40}(caller|调用方)", r"diagnose", r"回传", r"caller decides",
-    r"re-invoke", r"escalat", r"升级", r"rework", r"fallback", r"降级",
-    r"catch[^\n]*exception", r"structured error", r"错误.*(结构|回传|报告)",
-    r"由调用方",
-]
+# ── P0-2：error/recovery/communication 一律用结构化字段判定，禁用自然语言 Regex 语义判断 ──
+# 说明：本 validator 不再 grep 正文中的 "no error handling" / "retry" / "scheduler" 等关键词。
+#       错误处理/恢复/并行 runtime 的判定由结构化字段承担（见下方 check 逻辑）；
+#       正文语义真实性（"文档是否真的实现了 recovery"）由 Reviewer 人工确认。
 
 
 REQUIRED_BASELINE_KEYS = [
@@ -370,59 +345,68 @@ def check_artifact(artifact_dir, ptype, baseline):
             w += 1
             results.append(("WARN", "handoff/outputs 未显式声明（简单生成物可 N/A）"))
 
-    # ---- 7. Communication（P0-5：结构校验，非"没搜到=pass"）----
-    comm_violations = []
-    decl_text = ""
-    for path, _ in decl_files:
-        try:
-            decl_text += Path(path).read_text(encoding="utf-8", errors="replace") + "\n"
-        except OSError:
-            pass
-    for rt in FORBIDDEN_RUNTIME:
-        if re.search(rf"\b{re.escape(rt)}\b", decl_text, re.I):
-            comm_violations.append(rt)
-    if comm_violations:
-        f += 1
-        results.append(("FAIL", "Communication: 声明了 Agent OS 禁止的并行 runtime 组件: %s"
-                        % ", ".join(comm_violations)))
-    else:
-        _p("Communication: 未声明并行 runtime 组件（符合 Agent OS 原生）")
+    # ---- 7. Communication（P0-2：结构化字段判定，替代 FORBIDDEN_RUNTIME 自然语言 grep）----
+    # 负向违规检查：默认"无并行 runtime 声明"即合规（PASS）；只有结构化字段显式声明 parallel_runtime=true 才 FAIL。
+    # 正文是否真建了并行 runtime 由 Reviewer 语义判断（§3.7 Protocol Compliance）。
+    if xa is not None:
+        comm = xa.get("communication")
+        if comm is None:
+            _p("Communication: 未结构化声明并行 runtime（语义判断交 Reviewer）")
+        elif isinstance(comm, dict):
+            pr = comm.get("parallel_runtime")
+            if pr is True:
+                f += 1
+                results.append(("FAIL", "Communication: communication.parallel_runtime=true（显式声明 Agent OS 禁止的并行 runtime）"))
+            elif pr is False:
+                _p("Communication: communication.parallel_runtime=false（无并行 runtime，结构化声明）")
+            elif pr is None:
+                w += 1
+                results.append(("WARN", "Communication: communication 块缺 parallel_runtime 字段（missing structured evidence，交 Reviewer）"))
+            else:
+                f += 1
+                results.append(("FAIL", "Communication: communication.parallel_runtime 非法值: %r（须 bool）" % (pr,)))
+        else:
+            f += 1
+            results.append(("FAIL", "Communication: communication 须为结构化对象"))
 
-    # ---- 8. Error Handling（P0-5：强否定一票 FAIL；弱否定+无替代机制 FAIL；弱否定+有机制豁免）----
-    def _has_mech():
-        return any(re.search(pat, decl_text, re.I) for pat in RECOVERY_MECH)
-    err_hard = any(re.search(re.escape(np), decl_text, re.I) for np in NEG_ERROR_HARD)
-    err_soft = any(re.search(re.escape(np), decl_text, re.I) for np in NEG_ERROR_SOFT)
-    if err_hard:
-        f += 1
-        results.append(("FAIL", "Error Handling: 存在强否定/忽略错误声明（no error handling / silently ignored / errors are ignored 等）"))
-    elif err_soft and not _has_mech():
-        f += 1
-        results.append(("FAIL", "Error Handling: 声明不重试/不恢复且无任何替代机制"))
-    elif xa is not None and isinstance(xa.get("error_handling"), str) and not re.search(r"no |without|never|TODO", xa.get("error_handling", ""), re.I):
-        _p("Error Handling: 错误处理结构字段声明")
-    elif _has_mech():
-        _p("Error Handling: 存在错误回传/诊断机制（report/diagnose/回传/由调用方）")
-    else:
-        w += 1
-        results.append(("WARN", "Error Handling: 未确认错误处理路径（需 Reviewer 确认或 N/A）"))
+    # ---- 8. Error Handling（P0-2：结构化字段，替代 NEG_ERROR_* 自然语言 Regex）----
+    # error_handling: {declared: true} → PASS；{declared: false} → FAIL（显式否定）；缺字段 → WARN 交 Reviewer。
+    if xa is not None:
+        eh = xa.get("error_handling")
+        if eh is None:
+            w += 1
+            results.append(("WARN", "Error Handling: 未结构化声明 error_handling.declared（missing structured evidence，交 Reviewer）"))
+        elif isinstance(eh, dict) and isinstance(eh.get("declared"), bool):
+            if eh["declared"] is True:
+                _p("Error Handling: error_handling.declared=true（结构化声明）")
+            else:
+                f += 1
+                results.append(("FAIL", "Error Handling: error_handling.declared=false（显式声明不处理错误）"))
+        else:
+            f += 1
+            results.append(("FAIL", "Error Handling: error_handling 结构非法（须 {declared: bool}）"))
 
-    # ---- 9. Recovery（P0-5：强否定一票 FAIL；弱否定+无替代机制 FAIL；弱否定+有机制豁免）----
-    rec_hard = any(re.search(re.escape(rp), decl_text, re.I) for rp in NEG_RECOVERY_HARD)
-    rec_soft = any(re.search(re.escape(rp), decl_text, re.I) for rp in NEG_RECOVERY_SOFT)
-    if rec_hard:
-        f += 1
-        results.append(("FAIL", "Recovery: 存在强否定恢复声明（never retries / no recovery path / TODO recovery 等）"))
-    elif rec_soft and not _has_mech():
-        f += 1
-        results.append(("FAIL", "Recovery: 声明不重试/不恢复且无任何替代机制"))
-    elif xa is not None and isinstance(xa.get("recovery"), str) and not re.search(r"no |without|never|TODO", xa.get("recovery", ""), re.I):
-        _p("Recovery: 恢复路径结构字段声明")
-    elif _has_mech() or re.search(r"retry|escalat|重试|升级|由调用方|re-invoke", decl_text, re.I):
-        _p("Recovery: 存在重试/升级/调用方决策等恢复机制")
-    else:
-        w += 1
-        results.append(("WARN", "Recovery: 未确认恢复路径（需 Reviewer 确认或 N/A）"))
+    # ---- 9. Recovery（P0-2：结构化字段，替代 NEG_RECOVERY_* / RECOVERY_MECH 自然语言 Regex）----
+    # recovery: {declared: true, mechanism: retry} → PASS；{declared: false} → FAIL；缺字段 → WARN 交 Reviewer。
+    if xa is not None:
+        rc = xa.get("recovery")
+        if rc is None:
+            w += 1
+            results.append(("WARN", "Recovery: 未结构化声明 recovery.declared（missing structured evidence，交 Reviewer）"))
+        elif isinstance(rc, dict) and isinstance(rc.get("declared"), bool):
+            if rc["declared"] is True:
+                mech = rc.get("mechanism")
+                if isinstance(mech, str) and mech.strip():
+                    _p("Recovery: recovery.declared=true, mechanism=%s（结构化声明）" % mech)
+                else:
+                    w += 1
+                    results.append(("WARN", "Recovery: recovery.declared=true 但 mechanism 缺失（missing structured evidence，交 Reviewer）"))
+            else:
+                f += 1
+                results.append(("FAIL", "Recovery: recovery.declared=false（显式声明不恢复）"))
+        else:
+            f += 1
+            results.append(("FAIL", "Recovery: recovery 结构非法（须 {declared: bool, mechanism: str}）"))
 
     # ---- 10. Permissions（P0-6：L2+ 必须 true）----
     perm_fail = False
@@ -551,8 +535,16 @@ def check_artifact(artifact_dir, ptype, baseline):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("用法: verify_artifact.py <artifact-dir> [skill|agent|project|auto]", file=sys.stderr)
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "help"):
+        print("用法: verify_artifact.py <artifact-dir> [skill|agent|project|auto]")
+        print("")
+        print("职责边界：结构化值校验 + 结构校验（Schema / Required fields / Field value /")
+        print("  Protocol baseline / Version / Execution Record / Evidence / Capability evidence）。")
+        print("不做自然语言语义判断；error/recovery/communication 依赖结构化字段：")
+        print("  error_handling: {declared: true}")
+        print("  recovery:       {declared: true, mechanism: retry}")
+        print("  communication:  {parallel_runtime: false}")
+        print("缺结构化字段 → missing structured evidence 交 Reviewer（WARN，不自动 FAIL）。")
         return 3
     artifact_dir = sys.argv[1]
     ptype = sys.argv[2] if len(sys.argv) > 2 else "auto"

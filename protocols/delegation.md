@@ -2,6 +2,11 @@
 
 > 委派给 Developer sub-agent 的正式契约。每次 `sessions_spawn` 前必须填好。
 
+> **CNF-3 继承声明**：Multi-Agent 权限不变量（`Child Effective Authority ⊆ Delegation Scope ⊆ Parent Authority`、
+> 默认不继承、不可再委托放大）**继承 Agent OS ACTION-PROTOCOL §5**，本文件不复制；
+> DT 只补充 Developer-specific 约束（scope / expected_output / result_owner / timeout 阶梯）。
+> 最终执行边界永远是 OpenClaw native policy / approval / sandbox。
+
 ## 语义
 
 Delegation Contract 是 Main Agent 交给 Developer 的「工作说明书」：明确做什么、边界在哪、怎么算完成、结果归谁。
@@ -34,7 +39,7 @@ Delegation Contract 是 Main Agent 交给 Developer 的「工作说明书」：�
 
 ## 委派动作
 
-填好后用 `sessions_spawn` 委派（**Developer 唯一独立执行体，必须显式指定 model / context / taskName**）：
+填好后用 `sessions_spawn` 委派（**Developer 唯一独立执行体，必须显式指定 context / taskName**）：
 
 ```text
 sessions_spawn(
@@ -42,9 +47,13 @@ sessions_spawn(
   taskName = <task_id 的小写匹配名>,
   label = <human-readable label>,
   cwd = <目标工作目录, 可选>,
-  model = "deepseek/deepseek-v4-flash",   # 必须显式指定，不依赖默认模型
+  model = "deepseek/deepseek-v4-flash",   # 仅当前默认 implementation；protocol 只依赖 capability=developer，不依赖具体 model
   context = "isolated"                      # 必须 isolated
 )
 ```
+
+> **Developer Capability 说明**：`model` 是 deployment/config 层的默认实现，非协议约束。
+> Protocol 只要求委派一个 `capability: developer` 的执行体（runtime=openclaw，implementation=native_subagent）；
+> 换 model/runtime 只改 deployment，不改本契约语义。
 
 > **timeout 说明**：`timeout` 是 Workflow 层的任务控制字段，**不是 `sessions_spawn` 参数**（`sessions_spawn` 不支持 per-call timeout）。超时与恢复由 Main Agent 依据 `sessions_history` / `subagents` 状态 / completion 判断，走 `result-closure.md` 的 R1（Retry）→ R2（接管）→ R3（ESCALATE）阶梯。

@@ -29,9 +29,14 @@ acceptance_criteria: [] # 必须满足
 
 ## 3. Rework Loop 限制
 
+> **CNF-2 继承声明**：本节的失败/恢复策略**继承 Agent OS failure/recovery protocol**（Agent OS = contract），
+> `MAX_REWORK_ATTEMPTS=3` 只是 Development Team 的 **domain policy**（DT = policy），
+> 不声称重新定义 Agent OS 失败处理协议。失败后 diagnose → repair → retry → re-verify → escalate
+> 遵循 Agent OS 循环；DT 只把「重试上限」具体化为 3 次。
+
 | 规则 | 说明 |
 |:--|:--|
-| MAX_REWORK_ATTEMPTS | 3（超过 → FAILED → Main Agent） |
+| MAX_REWORK_ATTEMPTS | 3（DT domain policy；遵循 Agent OS failure/recovery protocol，超过 → ESCALATE/FAILED → Main Agent） |
 | 相同根因 2 次 | → 回到 Development Workflow 重新 Plan |
 | 每次 rework 必须记录 | attempt / failure_reason / previous_findings / required_changes |
 | 禁止死循环 | Developer→REWORK_REQUIRED→Developer→…→无限循环 |

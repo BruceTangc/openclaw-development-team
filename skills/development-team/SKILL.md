@@ -33,6 +33,14 @@ x-agent-os:
   memory_write: "governed"
   knowledge_write: "governed"
   evolution_feedback: true
+  # P0-2 结构化错误处理/恢复/通信声明（替代自然语言描述；validator 只读这些字段）
+  error_handling:
+    declared: true
+  recovery:
+    declared: true
+    mechanism: retry
+  communication:
+    parallel_runtime: false
 ---
 
 # Development Team（软件开发专用 Workflow）
@@ -60,7 +68,7 @@ Development Team 是**软件开发生命周期专用 Workflow**，不是通用�
 
 ## 架构铁律（不可违反）
 
-- **Developer 是唯一独立执行 Agent**（DeepSeek，`sessions_spawn`）
+- **Developer 是唯一独立执行 Agent**（抽象能力 `developer`，非具体模型；默认 runtime=openclaw / model=deepseek/deepseek-v4-flash，`sessions_spawn`）
 - **不 spawn Reviewer**：Reviewer 是 Workflow 内部阶段，由 Main Agent 自己执行
 - **不 spawn Validator**：独立验证是 Reviewer 的强制子步骤，不是独立角色
 - 其余能力（需求理解 / Repository 分析 / Research / Plan / IDEAL）都是 Development Workflow 内部步骤，不 spawn
