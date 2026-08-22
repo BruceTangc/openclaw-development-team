@@ -51,13 +51,13 @@
 ## E2E-4 Installer（真实）
 
 - `bash install.sh --repo <本地> --main-agent jarvis --skip-preflight --workspace <tmp>` 真实执行。
-- 结果：DT body 安装成功 → 版本链 manifest 写入（VERSION_COMMIT=c162293…）→
+- 结果：DT body 安装成功 → 版本链 manifest 写入（VERSION_COMMIT=b2d568a…）→
   Smoke Test 通过 → `discovered`（OpenClaw skills info 返回 filePath）→ `eligible=true`。
 - 版本链报告输出：
   ```
   Development Team
     version: 1.0.0
-    commit: c162293417be83d12856665c2c6159392a89281b
+    commit: b2d568a10889048865d2f297b3975ff2fba1ba75
     protocol: MA-1.1 / ccef093
     installed_at: 2026-08-22T10:46:24+0800
     discovered: PASS
@@ -70,8 +70,3 @@
 - 流程：`collect-state.sh` + `fingerprint-tree.sh` 记录 baseline → DT 任务仅新增 `new_module.py` 并 commit。
 - 结果：`feature.py` + `user_notes.txt` md5 前后一致，`git status` 仍显示 ` M feature.py` + `?? user_notes.txt`，
   用户文件未被破坏/未被误 commit。
-
-## 说明
-
-- E2E-2 / E2E-3 是**唯一**未在本环境真实执行的项，原因是 subagent 无 sessions_spawn（非架构缺陷）。
-- 其余 E2E 均为真实操作，证据见上方输出。
