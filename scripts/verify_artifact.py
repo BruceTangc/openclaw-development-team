@@ -83,23 +83,33 @@ RECOVERY_MECH = [
 ]
 
 
+REQUIRED_BASELINE_KEYS = [
+    "AGENT_OS_PROTOCOL_VERSION",
+    "AGENT_OS_ARCH_CONTRACT",
+    "AGENT_OS_BASELINE_COMMIT",
+    "AGENT_OS_BASELINE_LABEL",
+]
+
+
 def load_baseline(scripts_dir):
-    """从 protocol-baseline.sh 读取协议基线（单一真源）。解析失败则用保守默认。"""
-    baseline = {
-        "AGENT_OS_PROTOCOL_VERSION": "1.3",
-        "AGENT_OS_ARCH_CONTRACT": "v1.6",
-        "AGENT_OS_BASELINE_COMMIT": "ccef093",
-        "AGENT_OS_BASELINE_LABEL": "MA-1.1",
-    }
+    """从 protocol-baseline.sh 读取协议基线（唯一真源）。
+
+    fail-closed：文件不存在 / 无法读取 / 必需字段缺失 → 返回 None（调用方必须拒绝）。
+    不做任何内嵌默认值，不参与第二真源。
+    """
     bp = os.path.join(scripts_dir, "protocol-baseline.sh")
+    if not os.path.isfile(bp):
+        return None
     try:
         txt = Path(bp).read_text(encoding="utf-8")
-        for k in baseline:
-            m = re.search(rf'^{k}=\s*"([^"]*)"', txt, re.M)
-            if m:
-                baseline[k] = m.group(1)
     except OSError:
-        pass  # 用默认
+        return None
+    baseline = {}
+    for k in REQUIRED_BASELINE_KEYS:
+        m = re.search(rf'^{k}=\s*"([^"]*)"', txt, re.M)
+        if not m or not m.group(1):
+            return None
+        baseline[k] = m.group(1)
     return baseline
 
 
@@ -552,6 +562,10 @@ def main():
 
     scripts_dir = os.path.dirname(os.path.abspath(__file__))
     baseline = load_baseline(scripts_dir)
+    if baseline is None:
+        print("ERROR: Protocol Baseline 不可用（protocol-baseline.sh 缺失/无法读取/必需字段缺失）"
+              " — fail-closed: Compliance 不得 PASS", file=sys.stderr)
+        return 1
 
     print("Artifact: %s  Type: %s" % (artifact_dir, ptype))
     print("Agent OS Protocol: %s (Architecture Contract %s / %s %s)" % (
