@@ -45,6 +45,20 @@ resource_budget:
   # 节流
   spawn_cooldown_seconds: 10        # 连续 spawn 的最小间隔（秒）
 
+  # ── 失败恢复/退避参数（P0 三.1，配合 result-closure.md §5 R1-R3 阶梯） ──────
+  # 这些是配置参数，供 Main Agent/Orchestrator 在 retry/429/网络抖动时读取；
+  # 实际重试仍走 R1(同参重试≤max_attempts)→R2(接管)→R3(ESCALATE) 阶梯，不改变失败处理协议。
+  recovery:
+    retry:
+      max_attempts: 3            # 单阶段最大重试次数（对齐 rework-loop.md：Rework 上限也是 3）
+    rate_limit:
+      enabled: true              # 是否启用 429/限流退避
+      429_backoff_seconds: 30    # 收到 429 后的基础退避秒数
+      429_max_backoff_seconds: 300   # 退避上限（指数退避封顶）
+    network:
+      jitter_tolerance_seconds: 5    # 网络抖动容忍阈值（秒），超过才计入失败/重试判断
+      connect_timeout_seconds: 60    # 连接/响应超时阈值参考（秒）
+
   # 超限动作
   on_limit:
     action: queue                   # queue | reject | block（调用方按此处理）

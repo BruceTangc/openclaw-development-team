@@ -211,6 +211,19 @@ bash <workspace>/openclaw-development-team/uninstall.sh --workspace /path/to/you
 - 确认 `deepseek/deepseek-v4-flash` 在 OpenClaw 模型列表中
 - 测试：`openclaw status` 查看模型配置
 
+### 模型切换（$DEVELOPER_MODEL）
+
+Developer 是抽象能力 `developer`（非具体模型）；默认实现为 `deepseek/deepseek-v4-flash`。
+如需切换不换能力，可通过环境变量覆盖（默认仍为 deepseek-v4-flash）：
+
+```bash
+DEVELOPER_MODEL=other/provider-xyz bash install.sh        # 或在部署/调用层 export
+# 例如在集成点：export DEVELOPER_MODEL="anthropic/claude-sonnet-4"
+```
+
+> 模型属部署/config 层，非协议约束（见 `protocols/delegation.md`）；切模型只改部署，不改协议。
+> 若未设置 `$DEVELOPER_MODEL`，则回落到默认 `deepseek/deepseek-v4-flash`。
+
 ### 脚本权限不足
 
 ```bash

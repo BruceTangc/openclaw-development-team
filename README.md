@@ -28,7 +28,8 @@ bash install.sh
 # "帮我给 XXX 仓库新增 YYY 功能"
 ```
 
-> 详细安装说明见 [INSTALL.md](INSTALL.md)，卸载见 [UNINSTALL.md](UNINSTALL.md)。
+> 详细安装说明见 [INSTALL.md](INSTALL.md)，卸载见 [UNINSTALL.md](UNINSTALL.md)，
+> **日常使用/决策速查见 [USAGE.md](USAGE.md)**（三档怎么选 / 何时 Review / 失败恢复 / 常用脚本）。
 
 ---
 
@@ -181,6 +182,76 @@ V1 已完成**最小验收**：4 个真实测试（SIMPLE / FEATURE / FAIL→REW
 CASE 1-10 是能力覆盖参考清单（见 `IMPLEMENTATION_SPEC.md`），**不要求重做 10-Case 自动化 E2E**。
 
 真实验收证据见 `E2E_REPORT.md` / `V1_ACCEPTANCE_REPORT.md`。
+
+---
+
+## 日常维护 & 运行时工具（P0 增量，纯旁路不改核心流程）
+
+以下脚本为**可观测性/维护增强**，不进入三档核心流水线；Main Agent / Orchestrator 按需调用，
+与 Agent OS 的 Fast/Full Path、Execution Record、task-manager 状态机对齐。**均为纯增量、可逆，不改变任何现有协议**。
+
+### 结构化运行日志（append-runtime-log.sh）
+
+每次 `spawn` / `decision` / `review` / `commit` 时向 `.runtime/manifest.jsonl`（已 gitignore，不入库）追加一行 JSONL：
+`ts/task_id/stage/status/decision/review_status/commit/elapsed/model/tokens/evidence/note`。
+
+```bash
+scripts/append-runtime-log.sh <repo> --task DT-XXXX --stage spawn --status RUNNING --model deepseek/deepseek-v4-flash
+scripts/append-runtime-log.sh <repo> --task DT-XXXX --stage review --review-status REWORK_REQUIRED --elapsed 8
+scripts/append-runtime-log.sh <repo> --task DT-XXXX --stage commit --commit <hash> --elapsed 3 --tokens 1200
+```
+
+### 失败复盘（recent-failures.sh）
+
+```bash
+scripts/recent-failures.sh <repo> [N]     # 默认最近 10 条；过滤 status∈{FAILED,RUNTIME_FAILED} / decision=ESCALATE / review in {FAILED,BLOCKED}
+```
+
+### 成本/耗时汇总（cost-report.sh）
+
+```bash
+scripts/cost-report.sh <repo>              # 全部
+DT_TIMEFRAME=24h scripts/cost-report.sh <repo>   # 最近 24 小时
+```
+
+### 断点续跑「continue <task_id>」（resume-task.sh）
+
+中途失败/超时/断电后，恢复上次任务：读 `.tasks/<task_id>/development-task.yaml` 的 `status` 字段
+（`NEW→DELEGATED→RUNNING→RUNTIME_COMPLETED→APPROVED`）与该任务已落盘的 plan/result/review artifact，输出续跑指针。
+
+```bash
+scripts/resume-task.sh <repo> DT-XXXX        # 查看续跑指针（只读，不自动 spawn）
+# 恢复命令（Main Agent 语义）：continue <task_id>
+```
+
+```
+continue DT-20260821-001
+```
+
+> 恢复 = `resume-task.sh`（看状态/下一步）→ 按需重新 spawn Developer/Reviewer → 续跑完成后
+> 用 `append-runtime-log.sh --stage resume` 记录一次断点续跑。真正执行由 Main Agent/Orchestrator 依输出决定。
+
+### .tasks/ 归档（archive-tasks.sh）
+
+把「已关闭（status∈{APPROVED,IMPLEMENTATION_VERIFIED,PROJECT_READY,COMPLETED,CLOSED}）且关闭超 N 天」的任务
+从 `.tasks/` 移到 `.tasks.archived/<task_id>` 并从 git index 清出（保留副本，便于追溯）：
+
+```bash
+scripts/archive-tasks.sh <repo> [天数]       # 默认 30 天
+```
+
+- **保留周期**：`archive-tasks.sh` 只把**超期已关闭**任务移入 `.tasks.archived/`（非当前活跃证据）；
+  当前 `.tasks/` 仍按 `artifact-persistence.md` 纳入版本控制。
+- `.tasks.archived/` 默认**不 gitignore**（建议随仓库保留一个归档周期供追溯），可自主清理最旧的归档。
+
+### 模型可配置（$DEVELOPER_MODEL）
+
+Developer 是抽象能力 `developer`（非具体模型）。默认实现为 `deepseek/deepseek-v4-flash`；若需切换模型，
+可通过环境变量覆盖（详见 [INSTALL.md](INSTALL.md)「模型切换」）：
+
+```bash
+DEVELOPER_MODEL=other/provider-xyz scripts/... # 或按 INSTALL.md 在部署层引入
+```
 
 ---
 
